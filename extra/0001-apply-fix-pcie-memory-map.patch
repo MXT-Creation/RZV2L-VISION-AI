@@ -1,0 +1,115 @@
+From a05999e186b0516a6d403b2ea88cc1e01ab24049 Mon Sep 17 00:00:00 2001
+From: canh dao <canh.dao.ct@renesas.com>
+Date: Fri, 23 Jun 2023 16:10:49 +0700
+Subject: [PATCH] apply fix pcie memory map
+
+This patch to fix the memory map
+
+Signed-off-by: canh dao <canh.dao.ct@renesas.com>
+---
+ ...64-boot-dts-renesas-Fixed-memory-map.patch | 42 +++++++++++++++++++
+ ...vers-pci-Update-the-PCIE_CMA_ADDRESS.patch | 28 +++++++++++++
+ .../linux/linux-renesas_5.10.bbappend         |  7 ++++
+ 3 files changed, 77 insertions(+)
+ create mode 100644 meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0000-arch-arm64-boot-dts-renesas-Fixed-memory-map.patch
+ create mode 100644 meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0001-drivers-pci-Update-the-PCIE_CMA_ADDRESS.patch
+
+diff --git a/meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0000-arch-arm64-boot-dts-renesas-Fixed-memory-map.patch b/meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0000-arch-arm64-boot-dts-renesas-Fixed-memory-map.patch
+new file mode 100644
+index 00000000..467ffdb4
+--- /dev/null
++++ b/meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0000-arch-arm64-boot-dts-renesas-Fixed-memory-map.patch
+@@ -0,0 +1,42 @@
++From ebb6022af5e07326f05c7a4c91f5cfc8a399b43d Mon Sep 17 00:00:00 2001
++From: Canh Dao <canh.dao.ct@renesas.com>
++Date: Thu, 22 Jun 2023 14:36:30 +0700
++Subject: [PATCH] arch:arm64:boot:dts:renesas: Fixed memory map
++
++This commit to change memory map for RZ/V2M
++
++Signed-off-by: Canh Dao <canh.dao.ct@renesas.com>
++---
++ arch/arm64/boot/dts/renesas/r9a09g011gbg-evaluation-board.dts | 2 +-
++ arch/arm64/boot/dts/renesas/r9a09g011gbg_reserved-memory.dtsi | 2 +-
++ 2 files changed, 2 insertions(+), 2 deletions(-)
++
++diff --git a/arch/arm64/boot/dts/renesas/r9a09g011gbg-evaluation-board.dts b/arch/arm64/boot/dts/renesas/r9a09g011gbg-evaluation-board.dts
++index 3a99267066b7..29971f707c5d 100644
++--- a/arch/arm64/boot/dts/renesas/r9a09g011gbg-evaluation-board.dts
+++++ b/arch/arm64/boot/dts/renesas/r9a09g011gbg-evaluation-board.dts
++@@ -29,7 +29,7 @@
++ 
++     memory@180000000 {
++         device_type = "memory";
++-        reg = <0x1 0x80000000 0x0 0x7FFFFF00>;
+++        reg = <0x1 0x80000000 0x0 0x7FC00000>;
++     };
++ 
++     vcc_sdhi0: regulator-vcc-sdhi0 {
++diff --git a/arch/arm64/boot/dts/renesas/r9a09g011gbg_reserved-memory.dtsi b/arch/arm64/boot/dts/renesas/r9a09g011gbg_reserved-memory.dtsi
++index ce106f808f68..cc8f636fbb6e 100644
++--- a/arch/arm64/boot/dts/renesas/r9a09g011gbg_reserved-memory.dtsi
+++++ b/arch/arm64/boot/dts/renesas/r9a09g011gbg_reserved-memory.dtsi
++@@ -28,7 +28,7 @@
++         image_buf0: image_buf@0 {
++             compatible = "shared-dma-pool";
++             reusable;
++-            reg = <0x1 0xFFBFFF00 0x0 0x400000>; //4MiB
+++            reg = <0x1 0xFF800000 0x0 0x400000>; //4MiB
++             label = "image_buf0";
++         };
++     };
++-- 
++2.17.1
++
+diff --git a/meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0001-drivers-pci-Update-the-PCIE_CMA_ADDRESS.patch b/meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0001-drivers-pci-Update-the-PCIE_CMA_ADDRESS.patch
+new file mode 100644
+index 00000000..3a80e8d7
+--- /dev/null
++++ b/meta-rzv2m/recipes-kernel/linux/linux-renesas/patches/rzv2m_patch/0001-drivers-pci-Update-the-PCIE_CMA_ADDRESS.patch
+@@ -0,0 +1,28 @@
++From 81564708b71bf413192d7d9086f7f2b3a62d2bb9 Mon Sep 17 00:00:00 2001
++From: Canh Dao <canh.dao.ct@renesas.com>
++Date: Thu, 22 Jun 2023 14:45:06 +0700
++Subject: [PATCH] drivers:pci: Update the PCIE_CMA_ADDRESS
++
++This commit to update the PCIE_CMA_ADDRESS
++
++Signed-off-by: Canh Dao <canh.dao.ct@renesas.com>
++---
++ drivers/pci/controller/pcie-rzv2m.h | 2 +-
++ 1 file changed, 1 insertion(+), 1 deletion(-)
++
++diff --git a/drivers/pci/controller/pcie-rzv2m.h b/drivers/pci/controller/pcie-rzv2m.h
++index 7985094f110f..76809d3fddaf 100644
++--- a/drivers/pci/controller/pcie-rzv2m.h
+++++ b/drivers/pci/controller/pcie-rzv2m.h
++@@ -364,7 +364,7 @@
++ /* ----------------------------------------------------
++   PCIe CMA
++ -------------------------------------------------------*/
++-#define PCIE_CMA_ADDRESS		 				0x1FFFFFF00
+++#define PCIE_CMA_ADDRESS		 				0x1FFC00000
++ #define PCIE_CMA_SIZE				 			0x100
++ 
++ struct rzv2m_axi_window_set {
++-- 
++2.17.1
++
+diff --git a/meta-rzv2m/recipes-kernel/linux/linux-renesas_5.10.bbappend b/meta-rzv2m/recipes-kernel/linux/linux-renesas_5.10.bbappend
+index f79d758e..2948012b 100644
+--- a/meta-rzv2m/recipes-kernel/linux/linux-renesas_5.10.bbappend
++++ b/meta-rzv2m/recipes-kernel/linux/linux-renesas_5.10.bbappend
+@@ -5,3 +5,10 @@ SRCREV_rzv2m = "1f9621c381b9b809ede3532306d9eb3acca0974c"
+ 
+ BRANCH_rzv2ma = "v2ma/rz-5.10-cip29"
+ SRCREV_rzv2ma = "6f914ec736ba254524c47ac4864e933b89ddfcd7"
++
++FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
++
++SRC_URI_append = " \
++   file://patches/rzv2m_patch/0000-arch-arm64-boot-dts-renesas-Fixed-memory-map.patch \
++   file://patches/rzv2m_patch/0001-drivers-pci-Update-the-PCIE_CMA_ADDRESS.patch \
++"
+-- 
+2.25.1
