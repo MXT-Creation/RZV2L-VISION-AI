@@ -6,12 +6,12 @@ KERNEL_DEVICETREE = " \
 "
 
 SRC_URI_append +=  "\
+	file://dts/ \
 	file://fragment-01-usb-ethernet.cfg \
 	file://fragment-02-wifi.cfg \
 	file://fragment-03-can.cfg \
 	file://fragment-04-ov5647.cfg \
 	file://fragment-05-imx219.cfg \
-	file://patches/0001-arm64-dts-renesas-add-r9a07g054l2-ov5647-smarc-dts.patch \
 	file://patches/0002-media-ov5647-Add-support-for-PWDN-GPIO.patch \
 	file://patches/0003-media-ov5647-Add-support-for-non-continuous-clock-mo.patch \
 	file://patches/0004-media-ov5647-Add-set_fmt-and-get_fmt-calls.patch \
@@ -42,8 +42,11 @@ SRC_URI_append +=  "\
 	file://patches/0029-media-ov5647-Support-VIDIOC_SUBSCRIBE_EVENT.patch \
 	file://patches/0030-media-ov5647-Remove-640x480-SBGGR8-mode.patch \
 	file://patches/0031-media-i2c-ov5647-use-pm_runtime_resume_and_get.patch \
-	file://patches/1004-arch-arm64-dts-add-r9a07g054l2-imx219-smarc.dts.patch \
 "
+
+do_compile_prepend() {
+	cp -rf ${WORKDIR}/dts/* ${S}/arch/arm64/boot/dts/renesas/
+}
 
 do_install_append() {
 	# Symlink the OV5647 DT to '/boot/r9a07g054l2-smarc.dtb'
