@@ -49,25 +49,25 @@
 		memory-region = <&image_buf0>;
 	};
 
-	imx219_vdig_1v8: 1p8v {
+	cam1_1v8_supply: 1p8v {
 		compatible = "regulator-fixed";
-		regulator-name = "camera_vdddo";
+		regulator-name = "cam1_1v8_supply";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
 	};
 
-	imx219_vana_2v8: 2p8v {
+	cam1_2v8_supply: 2p8v {
 		compatible = "regulator-fixed";
-		regulator-name = "camera_vdda";
+		regulator-name = "cam1_2v8_supply";
 		regulator-min-microvolt = <2800000>;
 		regulator-max-microvolt = <2800000>;
 		regulator-always-on;
 	};
 
-	imx219_vddl_1v2: 1p2v {
+	cam1_1v2_supply: 1p2v {
 		compatible = "regulator-fixed";
-		regulator-name = "camera_vddd";
+		regulator-name = "cam1_1v2_supply";
 		regulator-min-microvolt = <1200000>;
 		regulator-max-microvolt = <1200000>;
 		regulator-always-on;
@@ -103,7 +103,7 @@
 };
 
 &i2c0 {
-	status = "okay";
+	status = "disabled";
 	/delete-node/ camera@3c;
 };
 
@@ -119,14 +119,14 @@
 		clock-names = "xclk";
 		clocks = <&clk_ext_camera>;
 		clock-frequency = <24000000>;
-		VANA-supply = <&imx219_vana_2v8>;
-		VDIG-supply = <&imx219_vdig_1v8>;
-		VDDL-supply = <&imx219_vddl_1v2>;
+		VANA-supply = <&cam1_2v8_supply>;
+		VDIG-supply = <&cam1_1v8_supply>;
+		VDDL-supply = <&cam1_1v2_supply>;
 
 		port {
-			imx219_to_csi: endpoint {
+			cam1_to_csi: endpoint {
 				clock-lanes = <0>;
-				data-lanes = <0x01 0x02>;
+				data-lanes = <1 2>;
 				link-frequencies = /bits/ 64 <456000000>;
 				remote-endpoint = <&csi2_in>;
 			};
@@ -227,8 +227,8 @@
 		port {
 			csi2_in: endpoint {
 				clock-lanes = <0>;
-				data-lanes = <0x01 0x02>;
-				remote-endpoint = <&imx219_to_csi>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&cam1_to_csi>;
 			};
 		};
 	};

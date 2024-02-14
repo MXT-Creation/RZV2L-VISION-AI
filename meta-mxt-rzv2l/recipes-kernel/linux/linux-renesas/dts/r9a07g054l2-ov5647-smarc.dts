@@ -49,38 +49,28 @@
 		memory-region = <&image_buf0>;
 	};
 
-	ov5647_vdddo_1v8: 1p8v {
+	cam1_1v8_supply: 1p8v {
 		compatible = "regulator-fixed";
-		regulator-name = "camera_vdddo";
+		regulator-name = "cam1_1v8_supply";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
 	};
 
-	ov5647_vdda_2v8: 2p8v {
+	cam1_2v8_supply: 2p8v {
 		compatible = "regulator-fixed";
-		regulator-name = "camera_vdda";
+		regulator-name = "cam1_2v8_supply";
 		regulator-min-microvolt = <2800000>;
 		regulator-max-microvolt = <2800000>;
 		regulator-always-on;
 	};
 
-	ov5647_vddd_1v5: 1p5v {
+	cam1_1v5_supply: 1p5v {
 		compatible = "regulator-fixed";
-		regulator-name = "camera_vddd";
+		regulator-name = "cam1_1v5_supply";
 		regulator-min-microvolt = <1500000>;
 		regulator-max-microvolt = <1500000>;
 		regulator-always-on;
-	};
-
-	ov5647rst {
-		compatible = "regulator-gpio";
-		regulator-name = "ov5647rst";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <3300000>;
-		gpios = <&pinctrl RZG2L_GPIO(42, 4) GPIO_ACTIVE_LOW>;
-		enable-active-low;
-		regulator-boot-on;
 	};
 
 	/delete-node/ sound;
@@ -129,13 +119,13 @@
 		clock-names = "xclk";
 		clocks = <&clk_ext_camera>;
 		clock-frequency = <25000000>;
-		vdddo-supply = <&ov5647_vdddo_1v8>;
-		vdda-supply = <&ov5647_vdda_2v8>;
-		vddd-supply = <&ov5647_vddd_1v5>;
+		vdddo-supply = <&cam1_1v8_supply>;
+		vdda-supply = <&cam1_2v8_supply>;
+		vddd-supply = <&cam1_1v5_supply>;
 		pwdn-gpios = <&pinctrl RZG2L_GPIO(42, 3) GPIO_ACTIVE_HIGH>;
 
 		port {
-			ov5647_to_csi: endpoint {
+			cam1_to_csi: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
 				remote-endpoint = <&csi2_in>;
@@ -238,7 +228,7 @@
 			csi2_in: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
-				remote-endpoint = <&ov5647_to_csi>;
+				remote-endpoint = <&cam1_to_csi>;
 			};
 		};
 	};
