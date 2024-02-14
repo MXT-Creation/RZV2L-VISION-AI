@@ -2,6 +2,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 KERNEL_DEVICETREE = " \
 	renesas/r9a07g054l2-imx219-smarc.dtb \
+	renesas/r9a07g054l2-imx477-smarc.dtb \
 	renesas/r9a07g054l2-ov5647-smarc.dtb \
 "
 
@@ -42,6 +43,7 @@ SRC_URI_append +=  "\
 	file://patches/0029-media-ov5647-Support-VIDIOC_SUBSCRIBE_EVENT.patch \
 	file://patches/0030-media-ov5647-Remove-640x480-SBGGR8-mode.patch \
 	file://patches/0031-media-i2c-ov5647-use-pm_runtime_resume_and_get.patch \
+	file://patches/1001-media-i2c-imx477-port-driver-from-RPi.patch \
 "
 
 do_compile_prepend() {
