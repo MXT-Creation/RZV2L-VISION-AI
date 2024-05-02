@@ -6,6 +6,7 @@ IMAGE_INSTALL_append = " \
 	custom-configs \
 	app-usbcam-http \
 	app-usbcam-client \
+	etb \
 	ustreamer \
 	iperf3 \
 "
