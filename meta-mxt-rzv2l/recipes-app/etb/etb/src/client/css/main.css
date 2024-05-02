@@ -1,0 +1,32 @@
+
+body{
+	font-family: sans-serif;
+	text-align: center;
+	padding: 5px;
+	margin: 0px;
+}
+
+p {
+	font-weight: bold;
+	font-size: 18px;
+	margin-bottom: 6px;
+}
+
+.app_table {
+	display: flex;
+	justify-content: center;
+};
+
+.row{
+	margin-bottom: 10px;
+}
+
+.movie_canvas {
+	background-color: darkgray;
+}
+
+.now_time {
+	font-weight: bold;
+	font-size: 18px;
+	margin-left: 12px;
+}
