@@ -15,7 +15,9 @@ SRC_URI = "file://licenses/ \
 	   file://hrnet_cam.tar.bz2 \
 	   file://resnet50_cam.tar.bz2 \
 	   file://tinyyolov2_cam.tar.bz2 \
+	   file://tinyyolov2_cam.json \
 	   file://yolov3_cam.tar.bz2 \
+	   file://yolov3_cam.json \
 	   file://coco-labels-2014_2017.txt \
 	   file://synset_words_imagenet.txt \
 "
@@ -35,6 +37,8 @@ do_install() {
 	cp -rf ${WORKDIR}/resnet50_cam/* ${D}${MODELS_DIR}/resnet50_cam/
 	cp -rf ${WORKDIR}/tinyyolov2_cam/* ${D}${MODELS_DIR}/tinyyolov2_cam/
 	cp -rf ${WORKDIR}/yolov3_cam/* ${D}${MODELS_DIR}/yolov3_cam/
+
+	cp -rf ${WORKDIR}/*.json ${D}${MODELS_DIR}/
 
 	install -m 0644 ${WORKDIR}/coco-labels-2014_2017.txt ${D}${MODELS_DIR}/
 	install -m 0644 ${WORKDIR}/synset_words_imagenet.txt ${D}${MODELS_DIR}/
