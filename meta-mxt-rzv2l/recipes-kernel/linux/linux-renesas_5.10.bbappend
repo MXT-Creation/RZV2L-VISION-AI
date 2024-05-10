@@ -1,6 +1,7 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 KERNEL_DEVICETREE = " \
+	renesas/r9a07g054l2-tevs-smarc.dtb \
 	renesas/r9a07g054l2-imx219-smarc.dtb \
 	renesas/r9a07g054l2-imx477-smarc.dtb \
 	renesas/r9a07g054l2-imx708-smarc.dtb \
@@ -14,6 +15,7 @@ SRC_URI_append +=  "\
 	file://fragment-03-can.cfg \
 	file://fragment-04-ov5647.cfg \
 	file://fragment-05-imx219.cfg \
+	file://fragment-07-tevs.cfg \
 	file://patches/0002-media-ov5647-Add-support-for-PWDN-GPIO.patch \
 	file://patches/0003-media-ov5647-Add-support-for-non-continuous-clock-mo.patch \
 	file://patches/0004-media-ov5647-Add-set_fmt-and-get_fmt-calls.patch \
@@ -46,6 +48,7 @@ SRC_URI_append +=  "\
 	file://patches/0031-media-i2c-ov5647-use-pm_runtime_resume_and_get.patch \
 	file://patches/1001-media-i2c-imx477-port-driver-from-RPi.patch \
 	file://patches/1002-rzv2l-add-support-for-imx708.patch \
+	file://patches/2001-drivers-media-i2c-tevs-backport-driver-from-TechNexi.patch \
 "
 
 do_compile_prepend() {
@@ -53,8 +56,7 @@ do_compile_prepend() {
 }
 
 do_install_append() {
-	# Symlink the OV5647 DT to '/boot/r9a07g054l2-smarc.dtb'
 	# This way we get a booting system, even if the camera is not the same
 	install -m 0755 -d ${D}/boot
-	ln -s r9a07g054l2-ov5647-smarc.dtb ${D}/boot/r9a07g054l2-smarc.dtb 
+	cp ${D}/boot/r9a07g054l2-ov5647-smarc.dtb ${D}/boot/r9a07g054l2-smarc.dtb
 }
