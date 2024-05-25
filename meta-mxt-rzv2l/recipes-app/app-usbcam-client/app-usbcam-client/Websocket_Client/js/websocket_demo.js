@@ -181,7 +181,7 @@ let last_work_counter = 0;
 
 function start_delayed() {
     setTimeout(() => {
-        model.value = 'YOLOv3_Vest_Helmet';
+        model.value = 'TinyYOLOv2';
         socket.send(JSON.stringify({ 
             command_name: 'change_model',
             Value: {
