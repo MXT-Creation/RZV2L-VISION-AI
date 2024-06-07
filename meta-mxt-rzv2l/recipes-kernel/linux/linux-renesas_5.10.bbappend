@@ -50,6 +50,7 @@ SRC_URI_append +=  "\
 	file://patches/1002-rzv2l-add-support-for-imx708.patch \
 	file://patches/2001-drivers-media-i2c-tevs-backport-driver-from-TechNexi.patch \
 	file://patches/2002-media-i2c-backport-Arducam-Pivariety-64MP-camera-s-s.patch \
+	file://patches/2002_r8152_add6400_usb_to_ethernet.patch \
 "
 
 do_compile_prepend() {
