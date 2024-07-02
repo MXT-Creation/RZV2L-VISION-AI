@@ -2,6 +2,10 @@
 let predictionData = null; // FIXME hack
 let predictionImage = null; // FIXME hack
 
+object_colors = [ 'orange', 'magenta', 'red', 'yellow', 'green', 'blue' ];
+object_color_idx = 0;
+object_color_map = new Map();
+
 function camera_device_play_toggle_button(ws, buttonElement)
 {
 	var sel = document.getElementById("camera_device_sel");
@@ -169,22 +173,31 @@ function connect_camera_socket()
 			imgElemDrpAi.width = 640;
 			imgElemDrpAi.height = 480;
 			imgElemDrpAi.src = "data:image/jpeg;base64," + predictionImage;
-			
+
 			canvas = document.getElementById("drpai_canvas");
 			let contextDrpAi = canvas.getContext("2d");
 			contextDrpAi.drawImage(imgElemDrpAi, 0, 0, 640, 480);
 
 			if (predictionData) {
 				let data = predictionData;
-				contextDrpAi.linewidth = 16;
-				contextDrpAi.strokeStyle = 'blue';
-				contextDrpAi.fillStyle = 'blue';
-				contextDrpAi.font = "24pt";
 				for (i = 0; i < data.length; i++) {
 					let label = data[i].label;
 					let box = data[i].box;
+					let used_color = object_color_map.get(label);
+					if (used_color === undefined) {
+						used_color = 'blue';
+						if (object_color_idx < object_colors.length) {
+							used_color = object_colors[object_color_idx];
+							object_color_map.set(label, used_color);
+							object_color_idx++;
+						}
+					}
+					contextDrpAi.strokeStyle = used_color;
+					contextDrpAi.fillStyle = used_color;
+					contextDrpAi.lineWidth = 8;
 					contextDrpAi.strokeRect(box.x, box.y, box.w, box.h);
-					contextDrpAi.fillText(label, box.x, (box.y + 16));
+					contextDrpAi.font = "bold 20px sans-serif"
+					contextDrpAi.fillText(label, (box.x + 8), (box.y + 16));
 				}
 			}
 		}

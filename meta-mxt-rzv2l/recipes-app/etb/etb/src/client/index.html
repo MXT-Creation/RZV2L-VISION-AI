@@ -8,7 +8,7 @@
   </head>
 
   <body>
-    <table class="app_table">
+    <table id="app_table">
     <tr>
       <td>
         <div class="movie">
@@ -42,8 +42,31 @@
       <input id="drpai_model_start" name="drpai_model_start" type="button" value="Start" disabled />
       </td>
     </tr>
+
+    <tr>
+      <td>
+        <div class="graph">
+          <canvas id="graph_canvas" class="graph_canvas" width="640" height="320"></canvas>
+        </div>
+      </td>
+      <td>
+        <table id="table_stats">
+          <tr>
+            <td>
+              <p class="subtitle">Detection Info</p>
+              <textarea id="pred_window"></textarea>
+            </td>
+            <td>
+              <p class="subtitle">Proc Time</p>
+              <textarea id="drp_window"></textarea>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
     </table>
 
+    <script src="libs/jquery-3.4.1.min.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

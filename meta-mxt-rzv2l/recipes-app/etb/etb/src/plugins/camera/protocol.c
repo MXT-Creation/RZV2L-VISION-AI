@@ -87,9 +87,7 @@ static int queue_json_message(struct lws *wsi, struct per_session_data__camera *
 	memcpy(amsg.send_buf + LWS_PRE, s, slen);
 	amsg.flags = lws_write_ws_flags(LWS_WRITE_TEXT, 1, 1);
 
-	pthread_mutex_lock(&pss->lock_ring);
 	ret = lws_ring_insert(pss->ring, &amsg, 1);
-	pthread_mutex_unlock(&pss->lock_ring);
 
 	if (!ret) {
 		lwsl_warn(" (could insert message in ring)\n");
@@ -121,9 +119,7 @@ static int queue_video_stream(struct lws *wsi, const char *stream_id,
 	// FIXME: hardcoded
 	amsg.flags = lws_write_ws_flags(LWS_WRITE_BINARY, 1, 1);
 
-	pthread_mutex_lock(&pss->lock_ring);
 	ret = lws_ring_insert(pss->ring, &amsg, 1);
-	pthread_mutex_unlock(&pss->lock_ring);
 
 	if (!ret) {
 		lwsl_warn(" (could insert message in ring)\n");
@@ -131,52 +127,6 @@ static int queue_video_stream(struct lws *wsi, const char *stream_id,
 	}
 
 	return 0;
-}
-
-static void *drpai_thread(void *d)
-{
-#if 0
-	struct per_session_data__camera *pss = (struct per_session_data__camera *)d;
-	const char *err_msg;
-	json_object *res;
-
-	while (pss->drpai_thread_running) {
-		pthread_mutex_lock(&pss->lock_working);
-		if (!pss->drpai_working) {
-			pthread_mutex_unlock(&pss->lock_working);
-			usleep(5000);
-			continue;
-		}
-		pthread_mutex_unlock(&pss->lock_working);
-
-		err_msg = drpai_model_start(drpai);
-		if (err_msg) {
-			lwsl_warn("%s\n", err_msg);
-		}
-
-		while (drpai_is_running(d))
-			usleep(5000);
-
-		res = json_object_new_object();
-		if (!err_msg)
-			err_msg = drpai_model_get_result(d, res);
-
-		if (err_msg) {
-			json_object_object_add(res, "error",
-					       json_object_new_string(err_msg));
-		}
-
-		queue_json_message(pss->wsi, pss, res);
-		json_object_put(res);
-
-		pthread_mutex_lock(&pss->lock_working);
-		pss->drpai_working = false;
-		pthread_mutex_unlock(&pss->lock_working);
-	}
-#endif
-
-	pthread_exit(NULL);
-	return NULL;
 }
 
 static int protocol_handle_incoming(struct lws *wsi, struct per_session_data__camera *pss,
@@ -244,9 +194,7 @@ static int handle_outgoing_message(struct lws *wsi, struct per_session_data__cam
 	struct msg *pmsg;
 	int w;
 
-	pthread_mutex_lock(&pss->lock_ring);
 	pmsg = (struct msg*)lws_ring_get_element(pss->ring, &pss->tail);
-	pthread_mutex_unlock(&pss->lock_ring);
 	if (!pmsg) {
 		lwsl_debug(" (nothing in ring)\n");
 		return -1;
@@ -258,9 +206,7 @@ static int handle_outgoing_message(struct lws *wsi, struct per_session_data__cam
 		return -1;
 	}
 
-	pthread_mutex_lock(&pss->lock_ring);
 	lws_ring_consume_single_tail(pss->ring, &pss->tail, 1);
-	pthread_mutex_unlock(&pss->lock_ring);
 
 	lwsl_debug(" wrote %d: flags: 0x%x\n", w, pmsg->flags);
 
@@ -291,7 +237,7 @@ static int handle_video_drpai(struct lws *wsi, struct per_session_data__camera *
 			lwsl_warn("drpai_model_start: %s\n", err_msg);
 			goto out_send_err;
 		}
-	
+
 		get_result = 1;
 		// send a copy to the DRP AI canvas
 		queue_video_stream(wsi, "drpai+camera", pss, jpeg_buf, jpeg_buflen);
@@ -328,37 +274,6 @@ out_send_err:
 	json_object_put(res);
 
 	return 0;
-#if 0
-	pthread_mutex_lock(&pss->lock_working);
-	if (pss->drpai_working) {
-		pthread_mutex_unlock(&pss->lock_working);
-		return 0;
-	}
-	// FIXME: not ok, but meh
-	pss->drpai_working = true;
-	pthread_mutex_unlock(&pss->lock_working);
-
-	err_msg = drpai_model_load_input(d, buf, DRPAI_BUF_LEN);
-	if (err_msg)
-		goto out_send_err;
-
-	// send a copy to the DRP AI canvas
-	queue_video_stream(wsi, "drpai+camera", pss, jpeg_buf, jpeg_buflen);
-
-	return 1;
-
-out_send_err:
-	drpai_result = json_object_new_object();
-	if (err_msg) {
-		json_object_object_add(drpai_result, "error",
-				       json_object_new_string(err_msg));
-	}
-
-	queue_json_message(wsi, pss, drpai_result, false);
-	json_object_put(drpai_result);
-
-	return 0;
-#endif
 }
 
 static int handle_video_stream_out(struct lws *wsi, struct per_session_data__camera *pss)
@@ -400,7 +315,6 @@ int callback_camera(struct lws *wsi, enum lws_callback_reasons reason,
 	struct vhd_camera *vhd = lws_protocol_vh_priv_get(lws_get_vhost(wsi),
 							   lws_get_protocol(wsi));
 	int n;
-	void *retval;
 
 	switch (reason) {
 
@@ -432,17 +346,7 @@ int callback_camera(struct lws *wsi, enum lws_callback_reasons reason,
 			return -1;
 		}
 
-		pss->drpai_thread_running = true;
-		pthread_mutex_init(&pss->lock_ring, NULL);
-		pthread_mutex_init(&pss->lock_working, NULL);
 		pss->wsi = wsi;
-		pss->drpai_working = false;
-
-                if (pthread_create(&pss->threads[0], NULL, drpai_thread, pss)) {
-			lwsl_err("thread creation failed\n");
-			tjDestroy(pss->tjpeg_handle);
-			return -1;
-                }
 
 		pss->cam_id = -1;
 		pss->tail = 0;
@@ -482,9 +386,7 @@ int callback_camera(struct lws *wsi, enum lws_callback_reasons reason,
 			break;
 		}
 
-		pthread_mutex_lock(&pss->lock_ring);
 		n = lws_ring_get_count_free_elements(pss->ring);
-		pthread_mutex_unlock(&pss->lock_ring);
 		if (!n) {
 			lwsl_warn("dropping!\n");
 			break;
@@ -498,14 +400,8 @@ int callback_camera(struct lws *wsi, enum lws_callback_reasons reason,
 	case LWS_CALLBACK_CLOSED:
 		lwsl_info("camera: client disconnected\n");
 		camera_dev_play_stop_by_id(pss->cam_id);
-		pss->drpai_thread_running = false;
 		tjDestroy(pss->tjpeg_handle);
-		for (n = 0; n < (int)LWS_ARRAY_SIZE(pss->threads); n++)
-			if (pss->threads[n])
-				pthread_join(pss->threads[n], &retval);
 		lws_ring_destroy(pss->ring);
-		pthread_mutex_destroy(&pss->lock_ring);
-		pthread_mutex_destroy(&pss->lock_working);
 		break;
 
 	default:
