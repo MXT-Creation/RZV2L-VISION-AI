@@ -13,9 +13,7 @@ SRC_URI_append +=  "\
 	file://fragment-01-usb-ethernet.cfg \
 	file://fragment-02-wifi.cfg \
 	file://fragment-03-can.cfg \
-	file://fragment-04-ov5647.cfg \
-	file://fragment-05-imx219.cfg \
-	file://fragment-07-tevs.cfg \
+	file://fragment-04-camera-sensors.cfg \
 	file://patches/0002-media-ov5647-Add-support-for-PWDN-GPIO.patch \
 	file://patches/0003-media-ov5647-Add-support-for-non-continuous-clock-mo.patch \
 	file://patches/0004-media-ov5647-Add-set_fmt-and-get_fmt-calls.patch \
