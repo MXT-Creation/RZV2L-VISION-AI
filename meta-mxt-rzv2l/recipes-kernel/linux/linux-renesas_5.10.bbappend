@@ -2,6 +2,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 KERNEL_DEVICETREE = " \
 	renesas/r9a07g054l2-tevs-smarc.dtb \
+	renesas/r9a07g054l2-pivariety-smarc.dtb \
 	renesas/r9a07g054l2-imx219-smarc.dtb \
 	renesas/r9a07g054l2-imx477-smarc.dtb \
 	renesas/r9a07g054l2-imx708-smarc.dtb \
@@ -47,6 +48,7 @@ SRC_URI_append +=  "\
 	file://patches/1001-media-i2c-imx477-port-driver-from-RPi.patch \
 	file://patches/1002-rzv2l-add-support-for-imx708.patch \
 	file://patches/2001-drivers-media-i2c-tevs-backport-driver-from-TechNexi.patch \
+	file://patches/2002-media-i2c-backport-Arducam-Pivariety-64MP-camera-s-s.patch \
 "
 
 do_compile_prepend() {

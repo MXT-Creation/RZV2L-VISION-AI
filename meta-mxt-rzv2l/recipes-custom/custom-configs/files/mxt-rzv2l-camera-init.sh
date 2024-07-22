@@ -61,4 +61,12 @@ if media-ctl -d /dev/media0 -V "'imx708_noir':0 [fmt:SRGGB10_1X10/1536x864 field
 	exit 0
 fi
 
+if media-ctl -d /dev/media0 -V "'arducam-pivariety 1-000c':0 [fmt:SRGGB10_1X10/1920x1080 field:none]" &> /dev/null ; then
+	echo "Using camera is 'arducam-pivariety 1-000c':0"
+	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SRGGB10_1X10/1920x1080 field:none]"
+	media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+
+	exit 0
+fi
+
 echo "No supported camera found"
