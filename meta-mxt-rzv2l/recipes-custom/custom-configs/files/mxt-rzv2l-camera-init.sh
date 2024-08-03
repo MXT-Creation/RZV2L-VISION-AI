@@ -1,5 +1,13 @@
 #!/bin/sh
 
+if media-ctl -d /dev/media0 -V "'imx135 1-0010':0 [fmt:SRGGB10_1X10/832x628 field:none]" &> /dev/null ; then
+	echo "Using camera is 'imx135 1-0010':0"
+	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SRGGB10_1X10/832x628 field:none]"
+	media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+
+	exit 0
+fi
+
 if media-ctl -d /dev/media0 -V "'tevs 1-0048':0 [fmt:UYVY8_2X8/640x480 field:none]" &> /dev/null ; then
 	echo "Using camera is 'tevs 1-0048':0"
 	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/640x480 field:none]"

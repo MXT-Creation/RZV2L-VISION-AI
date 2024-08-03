@@ -3,6 +3,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 KERNEL_DEVICETREE = " \
 	renesas/r9a07g054l2-tevs-smarc.dtb \
 	renesas/r9a07g054l2-pivariety-smarc.dtb \
+	renesas/r9a07g054l2-imx135-smarc.dtb \
 	renesas/r9a07g054l2-imx219-smarc.dtb \
 	renesas/r9a07g054l2-imx477-smarc.dtb \
 	renesas/r9a07g054l2-imx708-smarc.dtb \
