@@ -1,5 +1,7 @@
 #!/bin/sh
 
+rm -f /tmp/app-usbcam-http-config
+
 if media-ctl -d /dev/media0 -V "'imx135 1-0010':0 [fmt:SRGGB10_1X10/832x628 field:none]" &> /dev/null ; then
 	echo "Using camera is 'imx135 1-0010':0"
 	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SRGGB10_1X10/832x628 field:none]"
@@ -60,6 +62,10 @@ fi
 
 if media-ctl -d /dev/media0 -V "'imx708_noir':0 [fmt:SRGGB10_1X10/1536x864 field:none]" &> /dev/null ; then
 	echo "Using camera is 'imx708_noir':0"
+
+	echo 'NATIVE_CAMERA_IMAGE_WIDTH=1536' > /tmp/app-usbcam-http-config
+	echo 'NATIVE_CAMERA_IMAGE_HEIGHT=864' >> /tmp/app-usbcam-http-config
+
 	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SSRGGB10_1X10/1536x864 field:none]"
 	media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
 
@@ -71,8 +77,14 @@ fi
 
 if media-ctl -d /dev/media0 -V "'arducam-pivariety 1-000c':0 [fmt:SRGGB10_1X10/1920x1080 field:none]" &> /dev/null ; then
 	echo "Using camera is 'arducam-pivariety 1-000c':0"
+
+	echo 'NATIVE_CAMERA_IMAGE_WIDTH=1920' > /tmp/app-usbcam-http-config
+	echo 'NATIVE_CAMERA_IMAGE_HEIGHT=1080' >> /tmp/app-usbcam-http-config
+
 	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SRGGB10_1X10/1920x1080 field:none]"
 	media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+
+	v4l2-ctl --set-ctrl=analogue_gain=10000
 
 	exit 0
 fi
