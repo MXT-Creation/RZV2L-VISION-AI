@@ -2,10 +2,17 @@
 
 rm -f /tmp/app-usbcam-http-config
 
-if media-ctl -d /dev/media0 -V "'imx135 1-0010':0 [fmt:SRGGB10_1X10/832x628 field:none]" &> /dev/null ; then
+if media-ctl -d /dev/media0 -V "'imx135 1-0010':0 [fmt:SRGGB10_1X10/1280x720 field:none]" &> /dev/null ; then
 	echo "Using camera is 'imx135 1-0010':0"
-	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SRGGB10_1X10/832x628 field:none]"
+	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SRGGB10_1X10/1280x720 field:none]"
 	media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+
+	echo 'NATIVE_CAMERA_IMAGE_WIDTH=1280' > /tmp/app-usbcam-http-config
+	echo 'NATIVE_CAMERA_IMAGE_HEIGHT=720' >> /tmp/app-usbcam-http-config
+
+	v4l2-ctl --set-ctrl=digital_gain=4
+	v4l2-ctl --set-ctrl=analogue_gain=140
+	v4l2-ctl --set-ctrl=exposure=3000
 
 	exit 0
 fi

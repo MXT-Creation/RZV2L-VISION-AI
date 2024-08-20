@@ -51,6 +51,7 @@ SRC_URI_append +=  "\
 	file://patches/2001-drivers-media-i2c-tevs-backport-driver-from-TechNexi.patch \
 	file://patches/2002-media-i2c-backport-Arducam-Pivariety-64MP-camera-s-s.patch \
 	file://patches/2002_r8152_add6400_usb_to_ethernet.patch \
+	file://patches/2003-media-i2c-add-support-for-Sony-IMX135.patch \
 "
 
 do_compile_prepend() {
