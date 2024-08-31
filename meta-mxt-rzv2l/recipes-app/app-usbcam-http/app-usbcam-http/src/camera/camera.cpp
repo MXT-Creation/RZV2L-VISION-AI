@@ -599,6 +599,39 @@ int8_t Camera::inference_capture_qbuf()
     return 0;
 }
 
+void rgb_to_yuv422_uyvy(const cv::Mat& rgb, cv::Mat& yuv) {
+    assert(rgb.size() == yuv.size() &&
+           rgb.depth() == CV_8U &&
+           rgb.channels() == 3 &&
+           yuv.depth() == CV_8U &&
+           yuv.channels() == 2);
+    for (int ih = 0; ih < rgb.rows; ih++) {
+        const uint8_t* rgbRowPtr = rgb.ptr<uint8_t>(ih);
+        uint8_t* yuvRowPtr = yuv.ptr<uint8_t>(ih);
+
+        for (int iw = 0; iw < rgb.cols; iw = iw + 2) {
+            const int rgbColIdxBytes = iw * rgb.elemSize();
+            const int yuvColIdxBytes = iw * yuv.elemSize();
+
+            const uint8_t R1 = rgbRowPtr[rgbColIdxBytes + 0];
+            const uint8_t G1 = rgbRowPtr[rgbColIdxBytes + 1];
+            const uint8_t B1 = rgbRowPtr[rgbColIdxBytes + 2];
+            const uint8_t R2 = rgbRowPtr[rgbColIdxBytes + 3];
+            const uint8_t G2 = rgbRowPtr[rgbColIdxBytes + 4];
+            const uint8_t B2 = rgbRowPtr[rgbColIdxBytes + 5];
+
+            const int Y  =  (0.257f * R1) + (0.504f * G1) + (0.098f * B1) + 16.0f ;
+            const int U  = -(0.148f * R1) - (0.291f * G1) + (0.439f * B1) + 128.0f;
+            const int V  =  (0.439f * R1) - (0.368f * G1) - (0.071f * B1) + 128.0f;
+            const int Y2 =  (0.257f * R2) + (0.504f * G2) + (0.098f * B2) + 16.0f ;
+
+            yuvRowPtr[yuvColIdxBytes + 0] = cv::saturate_cast<uint8_t>(Y );
+            yuvRowPtr[yuvColIdxBytes + 1] = cv::saturate_cast<uint8_t>(U );
+            yuvRowPtr[yuvColIdxBytes + 2] = cv::saturate_cast<uint8_t>(Y2);
+            yuvRowPtr[yuvColIdxBytes + 3] = cv::saturate_cast<uint8_t>(V );
+        }
+    }
+}
 
 /**
  * @brief get_img
@@ -612,12 +645,17 @@ uint8_t* Camera::get_img()
         return buffer[buf_capture.index];
 
     cv::Mat orig(in_height, in_width, CV_8UC2, buffer[buf_capture.index]);
-    cv::Mat scaled(scale_height, scale_width, CV_8UC2);
-    cv::resize(orig, scaled, cv::Size(scale_width, scale_height));
+    cv::Mat origRgb;
+    cv::cvtColor(orig, origRgb, cv::COLOR_YUV2RGB_YUYV);
+
+    cv::Mat scaled;
+    cv::resize(origRgb, scaled, cv::Size(scale_width, scale_height));
+    auto cropped = scaled(crop_region);
+
     cv::Mat final_out(out_height, out_width, CV_8UC2, buffer[buf_capture.index]);
 
-    // copy over original, because that's the mmap-ed memory for this capture buffer
-    scaled(crop_region).copyTo(final_out);
+    rgb_to_yuv422_uyvy(cropped, final_out);
+
     last_index = buf_capture.index;
 
     return buffer[buf_capture.index];
