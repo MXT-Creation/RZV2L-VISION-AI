@@ -1,0 +1,1500 @@
+From 5a03a99f022e0c07822847e245416cb42cd39071 Mon Sep 17 00:00:00 2001
+From: Bernd Hollensteiner <Bernd.Hollensteiner@renesas.com>
+Date: Wed, 18 May 2022 14:05:50 +0200
+Subject: [PATCH] IMX296 camera module add driver to i2c driver sources
+
+---
+ drivers/media/i2c/Makefile |    1 +
+ drivers/media/i2c/imx296.c | 1443 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 1458 insertions(+)
+ create mode 100644 drivers/media/i2c/imx296.c
+
+diff --git a/drivers/media/i2c/Kconfig b/drivers/media/i2c/Kconfig
+index 2487dcb00..9f0781344 100644
+--- a/drivers/media/i2c/Kconfig
++++ b/drivers/media/i2c/Kconfig
+@@ -958,6 +958,20 @@ config VIDEO_OV5645
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called ov5645.
+ 
++config VIDEO_IMX296
++	tristate "Sony IMX296 sensor support"
++	depends on OF
++	depends on I2C && VIDEO_V4L2
++	select MEDIA_CONTROLLER
++	select VIDEO_V4L2_SUBDEV_API
++	select V4L2_FWNODE
++	help
++	  This is a Video4Linux2 sensor driver for the Sony IMX296
++	  CMOS image sensor.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called IMX296.
++
+ config VIDEO_OV5647
+ 	tristate "OmniVision OV5647 sensor support"
+ 	depends on I2C && VIDEO_V4L2
+diff --git a/drivers/media/i2c/Makefile b/drivers/media/i2c/Makefile
+index 46e4517f6..cdf358dce 100644
+--- a/drivers/media/i2c/Makefile
++++ b/drivers/media/i2c/Makefile
+@@ -121,6 +121,7 @@ obj-$(CONFIG_VIDEO_IMX214)	+= imx214.o
+ obj-$(CONFIG_VIDEO_IMX219)	+= imx219.o
+ obj-$(CONFIG_VIDEO_IMX258)	+= imx258.o
+ obj-$(CONFIG_VIDEO_IMX274)	+= imx274.o
++obj-$(CONFIG_VIDEO_IMX296)	+= imx296.o
+ obj-$(CONFIG_VIDEO_IMX290)	+= imx290.o
+ obj-$(CONFIG_VIDEO_IMX319)	+= imx319.o
+ obj-$(CONFIG_VIDEO_IMX355)	+= imx355.o
+diff --git a/drivers/media/i2c/imx296.c b/drivers/media/i2c/imx296.c
+new file mode 100644
+index 000000000..d88d33650
+--- /dev/null
++++ b/drivers/media/i2c/imx296.c
+@@ -0,0 +1,1443 @@
++/*
++ * imx296.c - imx296 sensor driver
++ *
++ * Copyright (c) 2019. FRAMOS.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms and conditions of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <linux/slab.h>
++#include <linux/uaccess.h>
++#include <linux/gpio.h>
++#include <linux/module.h>
++#include <linux/seq_file.h>
++#include <linux/of.h>
++#include <linux/of_device.h>
++#include <linux/of_gpio.h>
++
++#include <linux/bitops.h>
++#include <linux/clk.h>
++#include <linux/delay.h>
++#include <linux/device.h>
++#include <linux/gpio/consumer.h>
++#include <linux/i2c.h>
++#include <linux/init.h>
++#include <linux/of_graph.h>
++#include <linux/regulator/consumer.h>
++#include <linux/types.h>
++#include <media/v4l2-ctrls.h>
++#include <media/v4l2-fwnode.h>
++#include <media/v4l2-device.h>
++#include <media/v4l2-subdev.h>
++
++
++#define IMX296_K_FACTOR 1000LL
++#define IMX296_M_FACTOR 1000000LL
++#define IMX296_G_FACTOR 1000000000LL
++#define IMX296_T_FACTOR 1000000000000LL
++
++#define IMX296_MAX_GAIN_DEC 480
++#define IMX296_MAX_GAIN_DB  48
++
++#define IMX296_MAX_BLACK_LEVEL	511
++#define IMX296_DEFAULT_BLACK_LEVEL	60
++
++#define IMX296_MIN_SHR0_LENGTH 4
++#define IMX296_MIN_INTEGRATION_LINES 1
++#define IMX296_INTEGRATION_OFFSET 14
++
++#define IMX296_MAX_CSI_LANES 4
++#define IMX296_TWO_LANE_MODE 2
++
++#define IMX296_INCK 74250000LL
++
++/**
++ * Image sensor registers as described in the IMX296 register map
++ */
++#define IMX_3A00         0x3A00
++#define IMX_3005         0x3005
++#define IMX_350B         0x350B
++#define IMX_300D         0x300D
++#define IMX_400E         0x400E
++#define VMAX_LOW         0x3010
++#define VMAX_MID         0x3011
++#define VMAX_HIGH        0x3012
++#define HMAX_LOW         0x3014
++#define HMAX_HIGH        0x3015
++
++#define IMX_4014         0x4014
++#define IMX_3516         0x3516
++#define IMX_321A         0x321A
++#define IMX_3226         0x3226
++#define IMX_3832         0x3832
++#define IMX_3833         0x3833
++#define IMX_3541         0x3541
++#define IMX_4041         0x4041
++#define IMX_3D48         0x3D48
++#define IMX_3D49         0x3D49
++#define IMX_3D4A         0x3D4A
++#define IMX_3D4B         0x3D4B
++#define IMX_3256         0x3256
++#define IMX_3758         0x3758
++#define IMX_3759         0x3759
++#define IMX_375A         0x375A
++#define IMX_375B         0x375B
++#define IMX_3165         0x3165
++#define IMX_3169         0x3169
++#define IMX_316A         0x316A
++#define IMX_4174         0x4174
++#define PULSE2           0x3079
++#define IMX_3090         0x3090
++#define IMX_3094         0x3094
++#define IMX_3098         0x3098
++#define IMX_309E         0x309E
++#define IMX_30A0         0x30A0
++#define IMX_30A1         0x30A1
++#define IMX_38A2         0x38A2
++#define IMX_40A2         0x40A2
++#define IMX_38A3         0x38A3
++#define IMX_30A4         0x30A4
++#define IMX_30A8         0x30A8
++
++#define IMX_30AC         0x30AC
++#define IMX_30AF         0x30AF
++#define IMX_40C1         0x40C1
++#define IMX_40C7         0x40C7
++#define IMX_31C8         0x31C8
++#define IMX_40C8         0x40C8
++#define IMX_31D0         0x31D0
++#define IMX_30DF         0x30DF
++
++#define PATERN_GEN           0x3238
++
++#define STANDBY          0x3000
++#define REGHOLD              0x3008
++#define XMSTA            0x300A
++#define SYNCSEL              0x3036
++#define TRIGEN               0x300B
++#define LOWLAGTRG            0x30AE
++#define VINT_EN              0x30AA
++
++#define GAIN_LOW         0x3204
++#define GAIN_HIGH        0x3205
++#define GAINDLY          0x3212
++#define BLKLEVEL_LOW     0x3254
++#define BLKLEVEL_HIGH    0x3255
++#define INCKSEL0         0x3089
++#define INCKSEL1         0x308A
++#define INCKSEL2         0x308B
++#define INCKSEL3         0x308C
++#define IMX_418C         0x418C
++
++#define SHS1_LOW         0x308D
++#define SHS1_MID         0x308E
++#define SHS1_HIGH        0x308F
++
++#define FID0_ROIV1ON_ROIH1ON 0x3300
++#define FID0_ROIPH1_LOW      0x3310
++#define FID0_ROIPH1_HIGH     0x3311
++#define FID0_ROIPV1_LOW      0x3312
++#define FID0_ROIPV1_HIGH     0x3313
++#define FID0_ROIWH1_LOW      0x3314
++#define FID0_ROIWH1_HIGH     0x3315
++#define FID0_ROIWV1_LOW      0x3316
++#define FID0_ROIWV1_HIGH     0x3317
++
++#define MIPIC_AREA3W_LOW     0x4182
++#define MIPIC_AREA3W_HIGH    0x4183
++
++#define SENSOR_INFO     0x3149
++
++
++#define IMX296_DEFAULT_WIDTH            1456
++#define IMX296_DEFAULT_HEIGHT           1088
++
++#define IMX296_H2V2_BINNING_WIDTH       728
++#define IMX296_H2V2_BINNING_HEIGHT      544
++
++#define IMX296_CROP_1280x720_WIDTH       1280
++#define IMX296_CROP_1280x720_HEIGHT      720
++
++#define IMX296_MIN_FRAME_LENGTH_DELTA 30
++/**
++ * Special values for the write table function
++ */
++
++#define IMX296_TABLE_WAIT_MS 0
++#define IMX296_TABLE_END     1
++#define IMX296_WAIT_MS       10
++
++enum imx296_frame_rate {
++	IMX296_60_FPS = 0,
++	IMX296_90_FPS,
++	IMX296_121_FPS,
++	IMX296_30_FPS,
++	IMX296_NUM_FRAMERATES,
++};
++
++static const int imx296_framerates[] = {
++	[IMX296_60_FPS] = 60,
++	[IMX296_90_FPS] = 90,
++	[IMX296_121_FPS] = 121,
++	[IMX296_30_FPS] = 30,
++};
++
++struct imx296_pixfmt {
++	u32 code;
++	u32 colorspace;
++};
++
++static const struct imx296_pixfmt imx296_formats[] = {
++	{ MEDIA_BUS_FMT_UYVY8_2X8, V4L2_COLORSPACE_SRGB, },
++};
++
++struct reg_value {
++	u16 reg;
++	u8 val;
++};
++
++struct imx296_mode_info {
++	u32 width;
++	u32 height;
++	const struct reg_value *data;
++	u32 data_size;
++	u32 pixel_clock;
++	u32 link_freq;
++	u32 max_fps;
++};
++
++struct imx296 {
++	struct i2c_client *i2c_client;
++	struct device *dev;
++	struct v4l2_subdev sd;
++	struct media_pad pad;
++	struct v4l2_fwnode_endpoint ep;
++	struct v4l2_mbus_framefmt fmt;
++	struct v4l2_rect crop;
++	struct clk *xclk;
++
++	struct regulator *io_regulator;
++	struct regulator *core_regulator;
++	struct regulator *analog_regulator;
++
++	const struct imx296_mode_info *current_mode;
++	enum imx296_frame_rate current_fr;
++	struct v4l2_fract frame_interval;
++
++	struct v4l2_ctrl_handler ctrls;
++	struct v4l2_ctrl *pixel_clock;
++	struct v4l2_ctrl *link_freq;
++
++	/* Cached register values */
++	u8 aec_pk_manual;
++	u8 timing_tc_reg20;
++	u8 timing_tc_reg21;
++
++	struct mutex power_lock; /* lock to protect power state */
++	int power_count;
++
++	struct gpio_desc *enable_gpio;
++	struct gpio_desc *rst_gpio;
++
++	bool streaming;
++};
++
++static inline struct imx296 *to_imx296(struct v4l2_subdev *sd)
++{
++	return container_of(sd, struct imx296, sd);
++}
++
++/**
++ * Tables for the write table function
++ */
++
++static const struct reg_value imx296_start[] = {
++
++    {STANDBY,          0x00},
++
++    {IMX296_TABLE_WAIT_MS, IMX296_WAIT_MS},
++
++    {XMSTA,            0x00},
++
++    {IMX296_TABLE_END,     0x00}
++};
++
++static const struct reg_value imx296_stop[] = {
++
++    {XMSTA,        0x01},
++    
++    {IMX296_TABLE_WAIT_MS, IMX296_WAIT_MS},
++    
++    {STANDBY,      0x01},
++
++    {IMX296_TABLE_END, 0x00}
++};
++
++static const struct reg_value imx296_init_settings[] = {
++
++    {GAIN_LOW,         0x00},
++    {GAIN_HIGH,        0x00},
++    {GAINDLY,          0x09},
++    {INCKSEL0,         0x80},
++    {INCKSEL1,         0x0B},
++    {INCKSEL2,         0x80},
++    {INCKSEL3,         0x08},
++    {IMX_418C,         0x74},
++
++    {IMX_3A00,     0x80},
++    {IMX_3005,     0xF0},
++    {IMX_350B,     0x0F},
++    {IMX_300D,     0x00},
++    {IMX_400E,     0x58},
++    {VMAX_LOW,     0x5E},
++    {VMAX_MID,     0x04},
++    {HMAX_LOW,     0x4C},
++    {IMX_4014,     0x1C},
++    {HMAX_HIGH,    0x04},
++    {IMX_3516,     0x77},
++    {IMX_321A,     0x00},
++    {IMX_3226,     0x02},
++    {IMX_3832,     0xF5},
++    {IMX_3833,     0x00},
++    {IMX_3541,     0x72},
++    {IMX_4041,     0x2A},
++    {IMX_3D48,     0xA3},
++    {IMX_3D49,     0x00},
++    {IMX_3D4A,     0x85},
++    {IMX_3D4B,     0x00},
++    {IMX_3256,     0x01},
++    {IMX_3758,     0xA3},
++    {IMX_3759,     0x00},
++    {IMX_375A,     0x85},
++    {IMX_375B,     0x00},
++    {IMX_3165,     0x00},
++    {IMX_3169,     0x10},
++    {IMX_316A,     0x02},
++    {IMX_4174,     0x00},
++    {PULSE2,       0x08},
++    {IMX_3090,     0x04},
++    {IMX_3094,     0x04},
++    {IMX_3098,     0x04},
++    {IMX_309E,     0x04},
++    {IMX_30A0,     0x04},
++    {IMX_30A1,     0x3C},
++    {IMX_38A2,     0xF6},
++    {IMX_40A2,     0x06},
++    {IMX_38A3,     0x00},
++    {IMX_30A4,     0x5F},
++    {IMX_30A8,     0x91},
++    {IMX_30AC,     0x28},
++    {IMX_30AF,     0x09},
++    {IMX_40C1,     0xF6},
++    {IMX_40C7,     0x0F},
++    {IMX_31C8,     0xF3},
++    {IMX_40C8,     0x00},
++    {IMX_31D0,     0xF4},
++    {IMX_30DF,     0x00},
++    {VINT_EN,          0x00},
++    {IMX296_TABLE_END, 0x00}
++};
++
++static const struct reg_value mode_1456x1088[] = {
++
++    {FID0_ROIV1ON_ROIH1ON, 0x00},
++    {VMAX_LOW,         0x5E},
++    {VMAX_MID,         0x04},
++    {GAIN_LOW,         0x00},
++    {GAIN_HIGH,        0x00},
++    
++    {FID0_ROIV1ON_ROIH1ON, 0x03},
++    {FID0_ROIPH1_LOW,      0x58},
++    {FID0_ROIPH1_HIGH,     0x00},
++    {FID0_ROIPV1_LOW,      0xB8},
++    {FID0_ROIPV1_HIGH,     0x00},
++    {FID0_ROIWH1_LOW,      0xAC},
++    {FID0_ROIWH1_HIGH,     0x05},
++    {FID0_ROIWV1_LOW,      0x40},
++    {FID0_ROIWV1_HIGH,     0x04},
++    {MIPIC_AREA3W_LOW,     0x40},
++    {MIPIC_AREA3W_HIGH,    0x04},
++    
++    {IMX296_TABLE_WAIT_MS, IMX296_WAIT_MS},
++    {IMX296_TABLE_END,     0x00}
++};
++
++static const struct reg_value mode_1380x1088[] = {
++
++    {FID0_ROIV1ON_ROIH1ON, 0x00},
++    {VMAX_LOW,         0x5E},
++    {VMAX_MID,         0x04},
++    {HMAX_LOW,         0x4C},
++    {HMAX_HIGH,        0x04},
++    
++    {FID0_ROIV1ON_ROIH1ON, 0x03},
++    {FID0_ROIPH1_LOW,      0x00},
++    {FID0_ROIPH1_HIGH,     0x00},
++    {FID0_ROIPV1_LOW,      0x00},
++    {FID0_ROIPV1_HIGH,     0x00},
++    {FID0_ROIWH1_LOW,      0x64},
++    {FID0_ROIWH1_HIGH,     0x05},
++    {FID0_ROIWV1_LOW,      0x40},
++    {FID0_ROIWV1_HIGH,     0x04},
++    {MIPIC_AREA3W_LOW,     0x40},
++    {MIPIC_AREA3W_HIGH,    0x04},
++    
++    {IMX296_TABLE_WAIT_MS, IMX296_WAIT_MS},
++    {IMX296_TABLE_END,     0x00}
++};
++
++static const struct reg_value mode_1280x720[] = {
++
++    {IMX_300D,         0x00},
++    {VMAX_LOW,         0xCA},
++    {VMAX_MID,         0x08},
++    {HMAX_LOW,         0x4C},
++    {HMAX_HIGH,        0x04},
++    {FID0_ROIV1ON_ROIH1ON, 0x03},
++    {FID0_ROIPH1_LOW,      0x58},
++    {FID0_ROIPH1_HIGH,     0x00},
++    {FID0_ROIPV1_LOW,      0xB8},
++    {FID0_ROIPV1_HIGH,     0x00},
++    {FID0_ROIWH1_LOW,      0x04},
++    {FID0_ROIWH1_HIGH,     0x05},
++    {FID0_ROIWV1_LOW,      0xD0},
++    {FID0_ROIWV1_HIGH,     0x02},
++    {MIPIC_AREA3W_LOW,     0xD0},
++    {MIPIC_AREA3W_HIGH,    0x02},
++
++    {IMX296_TABLE_WAIT_MS, IMX296_WAIT_MS},
++    {IMX296_TABLE_END,     0x00}
++};
++
++static const struct reg_value mode_h2v2_binning[] = {
++
++    {FID0_ROIV1ON_ROIH1ON, 0x00},
++    {IMX_300D,         0x22},
++    {VMAX_LOW,         0x3B},
++    {VMAX_MID,         0x02},
++    {HMAX_LOW,         0x2E},
++    {HMAX_HIGH,        0x04},
++    {MIPIC_AREA3W_LOW,     0x20},
++    {MIPIC_AREA3W_HIGH,    0x02},
++
++    {IMX296_TABLE_WAIT_MS, IMX296_WAIT_MS},
++    {IMX296_TABLE_END,     0x00}
++};
++
++static const struct reg_value mode_640x480[] = {
++
++    {IMX_300D,         0x00},
++    {VMAX_LOW,         0xCA},
++    {VMAX_MID,         0x08},
++    {HMAX_LOW,         0x4C},
++    {HMAX_HIGH,        0x04},
++    {FID0_ROIV1ON_ROIH1ON, 0x03},
++    {FID0_ROIPH1_LOW,      0x98},
++    {FID0_ROIPH1_HIGH,     0x01},
++    {FID0_ROIPV1_LOW,      0x30},
++    {FID0_ROIPV1_HIGH,     0x01},
++    {FID0_ROIWH1_LOW,      0x88},
++    {FID0_ROIWH1_HIGH,     0x02},
++    {FID0_ROIWV1_LOW,      0xE0},
++    {FID0_ROIWV1_HIGH,     0x01},
++    {MIPIC_AREA3W_LOW,     0xE0},
++    {MIPIC_AREA3W_HIGH,    0x01},
++
++    {IMX296_TABLE_WAIT_MS, IMX296_WAIT_MS},
++    {IMX296_TABLE_END,     0x00}
++};
++
++static const s64 link_freq[] = {
++	594000000
++};
++
++/**
++ * Enum of available frame modes
++ */
++
++enum {
++    IMX296_MODE_1456x1088,
++    IMX296_MODE_1280x720,
++    IMX296_MODE_H2V2_BINNING,
++    IMX296_MODE_1380x1088,
++    IMX296_MODE_640x480,
++
++    IMX296_INIT_SETTINGS,
++
++    IMX296_MODE_START_STREAM,
++    IMX296_MODE_STOP_STREAM,
++};
++
++/**
++ * Connecting frame modes to mode tables
++ */
++
++static const struct reg_value *mode_table[] = {
++    [IMX296_MODE_1456x1088]       = mode_1456x1088,
++    [IMX296_MODE_1280x720]        = mode_1280x720,
++    [IMX296_MODE_H2V2_BINNING]    = mode_h2v2_binning,
++    [IMX296_MODE_1380x1088]       = mode_1380x1088,
++    [IMX296_MODE_640x480]         = mode_640x480,
++
++    [IMX296_INIT_SETTINGS]        = imx296_init_settings,
++
++    [IMX296_MODE_START_STREAM]    = imx296_start,
++    [IMX296_MODE_STOP_STREAM]     = imx296_stop,
++};
++
++/**
++ * Connecting resolutions, framerates and mode tables
++ */
++
++static const struct imx296_mode_info imx296_mode_info_data[] = {
++    {      
++        .width = IMX296_DEFAULT_WIDTH,
++	.height = IMX296_DEFAULT_HEIGHT,
++	.data = mode_1456x1088,
++	.data_size = ARRAY_SIZE(mode_1456x1088),
++	.pixel_clock = 145000000,
++	.link_freq = 0,
++	.max_fps = IMX296_30_FPS // was 60 fps
++    },
++    {   
++        .width = IMX296_CROP_1280x720_WIDTH,
++	.height = IMX296_CROP_1280x720_HEIGHT,
++	.data = mode_1280x720,
++	.data_size = ARRAY_SIZE(mode_1280x720),
++	.pixel_clock = 145000000,
++	.link_freq = 0,
++	.max_fps = IMX296_30_FPS // was 60 fps
++    },
++    {   
++        .width = IMX296_H2V2_BINNING_WIDTH,
++	.height = IMX296_H2V2_BINNING_HEIGHT,
++	.data = mode_h2v2_binning,
++	.data_size = ARRAY_SIZE(mode_h2v2_binning),
++	.pixel_clock = 145000000,
++	.link_freq = 0,
++	.max_fps = IMX296_121_FPS
++    },
++    {      
++        .width = 1380,
++	.height = 1088,
++	.data = mode_1380x1088,
++	.data_size = ARRAY_SIZE(mode_1380x1088),
++	.pixel_clock = 145000000,
++	.link_freq = 0,
++	.max_fps = IMX296_30_FPS // was 60 fps
++    },
++    {      
++        .width = 640,
++	.height = 480,
++	.data = mode_640x480,
++	.data_size = ARRAY_SIZE(mode_640x480),
++	.pixel_clock = 145000000,
++	.link_freq = 0,
++	.max_fps = IMX296_30_FPS // was 60 fps
++    }
++};
++
++
++static int imx296_write_reg(struct imx296 *imx296, u16 reg, u8 val)
++{
++	u8 regbuf[3];
++	int ret;
++
++	regbuf[0] = reg >> 8;
++	regbuf[1] = reg & 0xff;
++	regbuf[2] = val;
++
++	ret = i2c_master_send(imx296->i2c_client, regbuf, 3);
++	if (ret < 0) {
++		dev_err(imx296->dev, "%s: write reg error %d: reg=%x, val=%x\n",
++			__func__, ret, reg, val);
++		return ret;
++	}
++
++	return 0;
++}
++
++static int imx296_read_reg(struct imx296 *imx296, u16 reg, u8 *val)
++{
++	u8 regbuf[2];
++	int ret;
++
++	regbuf[0] = reg >> 8;
++	regbuf[1] = reg & 0xff;
++
++	ret = i2c_master_send(imx296->i2c_client, regbuf, 2);
++	if (ret < 0) {
++		dev_err(imx296->dev, "%s: write reg error %d: reg=%x\n",
++			__func__, ret, reg);
++		return ret;
++	}
++
++	ret = i2c_master_recv(imx296->i2c_client, val, 1);
++	if (ret < 0) {
++		dev_err(imx296->dev, "%s: read reg error %d: reg=%x\n",
++			__func__, ret, reg);
++		return ret;
++	}
++
++	return 0;
++}
++
++/**
++ * Reads multiple sequential registers at the same time using grouphold
++ */
++static int imx296_read_buffered_reg(struct imx296 *imx296,
++                                 u16 addr_low, u8 number_of_registers, u64 *val)
++{
++    struct device *dev = imx296->dev;
++    int err, i;
++    u8 reg;
++
++    *val = 0;
++
++    if (true){
++        err = imx296_write_reg(imx296, REGHOLD, 0x01);
++        if (err) {
++            dev_err(imx296->dev, "%s: error setting register hold\n", __func__);
++            return err;
++        }
++    }
++
++    for (i = 0; i < number_of_registers; i++) {
++        err = imx296_read_reg(imx296, addr_low + i, &reg);
++        *val += reg << (i * 8);
++        if (err) {
++            dev_err(imx296->dev, "%s: error reading buffered registers\n", __func__);
++            return err;
++        }
++    }
++
++    if (true){
++        err = imx296_write_reg(imx296, REGHOLD, 0x00);
++        if (err) {
++            dev_err(imx296->dev, "%s: error unsetting register hold\n", __func__);
++            return err;
++        }
++    }
++
++    return err;
++}
++
++/**
++ * Writes multiple sequential registers at the same time using reghold
++ */
++static int imx296_write_buffered_reg(struct imx296 *imx296, 
++                                u16 addr_low, u8 number_of_registers, u64 val)
++{
++    int err, i;
++	struct device *dev = imx296->dev;
++
++    if (true){
++        err = imx296_write_reg(imx296, REGHOLD, 0x01);
++        if (err) {
++            dev_err(imx296->dev, "%s: GRP_PARAM_HOLD error\n", __func__);
++            return err;
++        }
++    }
++
++    for (i = 0; i < number_of_registers; i++) {
++        err = imx296_write_reg(imx296, addr_low + i, (u8)(val >> (i * 8)));
++        if (err) {
++            dev_err(imx296->dev, "%s: BUFFERED register write error\n", __func__);
++            return err;
++        }
++    }
++
++    if (true){
++        err = imx296_write_reg(imx296, REGHOLD, 0x00);
++        if (err) {
++            dev_err(imx296->dev, "%s: GRP_PARAM_HOLD erroror\n", __func__);
++            return err;
++        }
++    }
++
++    return err;
++}
++
++static const struct imx296_mode_info *
++imx296_find_mode(struct imx296 *sensor, enum imx296_frame_rate fr,
++		 int width, int height, bool nearest)
++{
++	const struct imx296_mode_info *mode;
++
++	mode = v4l2_find_nearest_size(imx296_mode_info_data,
++			       ARRAY_SIZE(imx296_mode_info_data),
++			       width, height,
++			       width, height);
++	if (!mode ||
++	    (!nearest && (mode->width != width || mode->height != height)))
++		return NULL;
++
++	/* Check to see if the current mode exceeds the max frame rate */
++	if (imx296_framerates[fr] > imx296_framerates[mode->max_fps])
++		return NULL;
++
++	return mode;
++}
++
++static int imx296_set_register_array(struct imx296 *imx296,
++				     const struct reg_value *settings,
++				     unsigned int num_settings)
++{
++	unsigned int i;
++	int ret;
++
++	for (i = 0; i < num_settings; ++i, ++settings) {
++		ret = imx296_write_reg(imx296, settings->reg, settings->val);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
++static int imx296_set_power_on(struct imx296 *imx296)
++{
++	int ret;
++      pr_info("IMX296 sensor imx296_set_power_on - set GPIO to LOW\n");
++      gpiod_set_value_cansleep(imx296->enable_gpio, 0);
++      msleep(100);
++
++	ret = clk_prepare_enable(imx296->xclk);
++	if (ret < 0) {
++		dev_err(imx296->dev, "clk prepare enable failed\n");
++		return ret;
++	}
++
++	usleep_range(1000, 2000);
++	gpiod_set_value_cansleep(imx296->rst_gpio, 0);
++
++	msleep(20);
++
++	return 0;
++}
++
++static void imx296_set_power_off(struct imx296 *imx296)
++{
++	gpiod_set_value_cansleep(imx296->rst_gpio, 1);
++       msleep(20);
++	clk_disable_unprepare(imx296->xclk);
++}
++
++static int imx296_s_power(struct v4l2_subdev *sd, int on)
++{
++	struct imx296 *imx296 = to_imx296(sd);
++	int ret = 0;
++
++	mutex_lock(&imx296->power_lock);
++
++	/* If the power count is modified from 0 to != 0 or from != 0 to 0,
++	 * update the power state.
++	 */
++	if (imx296->power_count == !on) {
++		if (on) {
++                      pr_info("IMX296 sensor powered on always\n");
++			ret = imx296_set_power_on(imx296);
++			if (ret < 0)
++				goto exit;
++			usleep_range(500, 1000);
++		} else {
++			pr_info("IMX296 sensor powered off\n");
++			imx296_set_power_off(imx296);
++		}
++	}
++
++	/* Update the power count. */
++	imx296->power_count += on ? 1 : -1;
++	WARN_ON(imx296->power_count < 0);
++
++exit:
++	mutex_unlock(&imx296->power_lock);
++
++	return ret;
++}
++
++static int imx296_try_frame_interval(struct imx296 *sensor,
++				     struct v4l2_fract *fi,
++				     u32 width, u32 height)
++{
++	const struct imx296_mode_info *mode;
++	enum imx296_frame_rate rate = IMX296_30_FPS; // was 60 fps
++	int minfps, maxfps, best_fps, fps;
++	int i;
++
++	minfps = imx296_framerates[IMX296_30_FPS]; // was 60 fps
++	maxfps = imx296_framerates[IMX296_121_FPS];
++
++	if (fi->numerator == 0) {
++		fi->denominator = maxfps;
++		fi->numerator = 1;
++		rate = IMX296_121_FPS;
++		goto find_mode;
++	}
++
++	fps = clamp_val(DIV_ROUND_CLOSEST(fi->denominator, fi->numerator),
++			minfps, maxfps);
++
++	best_fps = minfps;
++	fps = clamp_val(DIV_ROUND_CLOSEST(fi->denominator, fi->numerator),
++			minfps, maxfps);	//why calling two times
++
++	for (i = 0; i < ARRAY_SIZE(imx296_framerates); i++) {
++		int curr_fps = imx296_framerates[i];
++
++		if (abs(curr_fps - fps) < abs(best_fps - fps)) {
++			best_fps = curr_fps;
++			rate = i;
++		}
++	}
++
++	fi->numerator = 1;
++	fi->denominator = best_fps;
++
++find_mode:
++	mode = imx296_find_mode(sensor, rate, width, height, false);
++	return mode ? rate : -EINVAL;
++}
++
++static int imx296_set_test_pattern(struct imx296 *imx296, s32 value)
++{	
++	int err;
++
++    	if (value) {
++        	err = imx296_write_reg(imx296, PATERN_GEN, (value << 3) + 7);
++        	if (err) 
++            		goto fail;
++  
++    	} else {
++        	err = imx296_write_reg(imx296, PATERN_GEN, 6);
++        	if (err) 
++           		goto fail;
++   	 }
++
++	dev_dbg(imx296->dev, "%s++ Test mode pattern: %u\n", __func__, value-1);
++
++    	return 0;
++fail:
++    	dev_err(imx296->dev, "%s: error setting test pattern\n", __func__);
++    	return err;
++}
++
++static const char * const imx296_test_pattern_menu[] = {
++	[0] = "No Pattern",
++    	[1] = "Sequence 1",
++    	[2] = "Sequence 2",
++    	[3] = "Gradiation",
++};
++
++static int imx296_set_gain(struct imx296 *imx296, s64 val)
++{	
++	int err;
++	u32 gain;
++	unsigned short reg_value_h, reg_value_l;
++	
++	gain = val * 10;
++	
++	reg_value_h = gain >> 8;
++	reg_value_l = gain & 0xFF;
++	
++	err = imx296_write_reg(imx296, GAIN_LOW, reg_value_l);
++	if (err){
++	    dev_dbg(imx296->dev, "%s: GAIN control error\n", __func__);
++	    return err;
++    	}
++    	
++    	err = imx296_write_reg(imx296, GAIN_HIGH, reg_value_h);
++	if (err){
++	    dev_dbg(imx296->dev, "%s: GAIN control error\n", __func__);
++	    return err;
++    	}
++    	
++    	pr_info("Input value set gain: %d", val);
++
++	return 0;
++}
++
++static int imx296_set_exposure(struct imx296 *imx296, s32 val)
++{	
++	int err;
++	u32 reg_shs;
++	u64 hmax;
++	u32 integration_time_line;
++    	u32 integration_offset = IMX296_INTEGRATION_OFFSET;
++    	u32 line_time;
++    	u32 frame_length;
++
++	dev_dbg(imx296->dev, "%s:++\n", __func__);
++
++    	err = imx296_read_buffered_reg(imx296, HMAX_LOW, 2, &hmax);
++    	if (err) {
++        	dev_err(imx296->dev, "%s: unable to read hmax\n", __func__);
++        	return err;
++    	}
++
++    	line_time = (hmax*IMX296_G_FACTOR) / (IMX296_INCK);
++	
++	integration_time_line = ((100*val - integration_offset)
++                                     * IMX296_K_FACTOR) / line_time ;
++                                     
++        frame_length = IMX296_G_FACTOR / (imx296_framerates[IMX296_30_FPS] * line_time);
++
++	reg_shs = frame_length - integration_time_line;
++	
++	if (reg_shs < IMX296_MIN_SHR0_LENGTH)
++        	reg_shs = IMX296_MIN_SHR0_LENGTH;
++	else if (reg_shs > (frame_length - IMX296_MIN_INTEGRATION_LINES))
++		reg_shs = frame_length - IMX296_MIN_INTEGRATION_LINES;
++		
++	err = imx296_write_buffered_reg (imx296, SHS1_LOW, 3, reg_shs);
++   	if (err) {
++        	dev_err(imx296->dev, "%s: failed to set frame length\n", __func__);
++        return err;
++    	}
++	
++	return 0;
++}
++
++static int imx296_s_ctrl(struct v4l2_ctrl *ctrl)
++{
++	struct imx296 *imx296 = container_of(ctrl->handler,
++					     struct imx296, ctrls);
++	int ret;
++
++	mutex_lock(&imx296->power_lock);
++	if (!imx296->power_count) {
++		mutex_unlock(&imx296->power_lock);
++		return 0;
++	}
++
++	switch (ctrl->id) {
++	case V4L2_CID_TEST_PATTERN:
++		ret = imx296_set_test_pattern(imx296, ctrl->val);
++		break;
++// [ISP Support PKG] Enabled to set GAIN/EXPOSE 
++	case V4L2_CID_GAIN:
++		ret = imx296_set_gain(imx296, ctrl->val);
++		break;
++	case V4L2_CID_EXPOSURE:
++		ret = imx296_set_exposure(imx296, ctrl->val);
++		break;
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	mutex_unlock(&imx296->power_lock);
++
++	return ret;
++}
++
++static const struct v4l2_ctrl_ops imx296_ctrl_ops = {
++	.s_ctrl = imx296_s_ctrl,
++};
++
++static int imx296_enum_mbus_code(struct v4l2_subdev *sd,
++				 struct v4l2_subdev_pad_config *cfg,
++				 struct v4l2_subdev_mbus_code_enum *code)
++{
++	if (code->index > 0)
++		return -EINVAL;
++
++    code->code = MEDIA_BUS_FMT_SRGGB10_1X10;   // [ISP Support PKG] YUV -> RAW10
++
++	return 0;
++}
++
++static int imx296_enum_frame_size(struct v4l2_subdev *subdev,
++				  struct v4l2_subdev_pad_config *cfg,
++				  struct v4l2_subdev_frame_size_enum *fse)
++{
++    if (fse->code != MEDIA_BUS_FMT_SRGGB10_1X10)   // [ISP Support PKG] YUV -> RAW10
++		return -EINVAL;
++
++	if (fse->index >= ARRAY_SIZE(imx296_mode_info_data))
++		return -EINVAL;
++
++	fse->min_width = imx296_mode_info_data[fse->index].width;
++	fse->max_width = imx296_mode_info_data[fse->index].width;
++	fse->min_height = imx296_mode_info_data[fse->index].height;
++	fse->max_height = imx296_mode_info_data[fse->index].height;
++
++	return 0;
++}
++
++static int imx296_enum_frame_interval(
++	struct v4l2_subdev *sd,
++	struct v4l2_subdev_pad_config *cfg,
++	struct v4l2_subdev_frame_interval_enum *fie)
++{
++	struct imx296 *sensor = to_imx296(sd);
++	struct v4l2_fract tpf;
++	int ret;
++
++	if (fie->pad != 0)
++		return -EINVAL;
++	if (fie->index >= IMX296_NUM_FRAMERATES)
++		return -EINVAL;
++
++	tpf.numerator = 1;
++	tpf.denominator = imx296_framerates[fie->index];
++
++	ret = imx296_try_frame_interval(sensor, &tpf,
++					fie->width, fie->height);
++	if (ret < 0)
++		return -EINVAL;
++
++	fie->interval = tpf;
++	return 0;
++}
++
++static int imx296_g_frame_interval(struct v4l2_subdev *sd,
++				   struct v4l2_subdev_frame_interval *fi)
++{
++	struct imx296 *sensor = to_imx296(sd);
++
++	mutex_lock(&sensor->power_lock);
++	fi->interval = sensor->frame_interval;
++	mutex_unlock(&sensor->power_lock);
++
++	return 0;
++}
++
++static int imx296_s_frame_interval(struct v4l2_subdev *sd,
++				   struct v4l2_subdev_frame_interval *fi)
++{
++	struct imx296 *sensor = to_imx296(sd);
++	const struct imx296_mode_info *mode;
++	int frame_rate, ret = 0;
++
++	if (fi->pad != 0)
++		return -EINVAL;
++
++	mutex_lock(&sensor->power_lock);
++
++	if (sensor->streaming) {
++		ret = -EBUSY;
++		goto out;
++	}
++
++	mode = sensor->current_mode;
++
++	frame_rate = imx296_try_frame_interval(sensor, &fi->interval,
++					       mode->width, mode->height);
++	if (frame_rate < 0)
++		frame_rate = IMX296_30_FPS; // was 60 fps
++
++	mode = imx296_find_mode(sensor, frame_rate, mode->width,
++				mode->height, true);
++	if (!mode) {
++		ret = -EINVAL;
++		goto out;
++	}
++	
++	pr_info("Frame rate: %d\n", frame_rate);
++
++	if (mode != sensor->current_mode ||
++	    frame_rate != sensor->current_fr) {
++		sensor->current_fr = frame_rate;
++		sensor->frame_interval = fi->interval;
++		sensor->current_mode = mode;
++	}
++out:
++	mutex_unlock(&sensor->power_lock);
++	return ret;
++}
++
++static struct v4l2_mbus_framefmt *
++__imx296_get_pad_format(struct imx296 *imx296,
++			struct v4l2_subdev_pad_config *cfg,
++			unsigned int pad,
++			enum v4l2_subdev_format_whence which)
++{
++	switch (which) {
++	case V4L2_SUBDEV_FORMAT_TRY:
++		return v4l2_subdev_get_try_format(&imx296->sd, cfg, pad);
++	case V4L2_SUBDEV_FORMAT_ACTIVE:
++		return &imx296->fmt;
++	default:
++		return NULL;
++	}
++}
++
++static int imx296_get_format(struct v4l2_subdev *sd,
++			     struct v4l2_subdev_pad_config *cfg,
++			     struct v4l2_subdev_format *format)
++{
++	struct imx296 *imx296 = to_imx296(sd);
++
++	format->format = *__imx296_get_pad_format(imx296, cfg, format->pad,
++						  format->which);
++	return 0;
++}
++
++static struct v4l2_rect *
++__imx296_get_pad_crop(struct imx296 *imx296, struct v4l2_subdev_pad_config *cfg,
++		      unsigned int pad, enum v4l2_subdev_format_whence which)
++{
++	switch (which) {
++	case V4L2_SUBDEV_FORMAT_TRY:
++		return v4l2_subdev_get_try_crop(&imx296->sd, cfg, pad);
++	case V4L2_SUBDEV_FORMAT_ACTIVE:
++		return &imx296->crop;
++	default:
++		return NULL;
++	}
++}
++
++static int imx296_set_format(struct v4l2_subdev *sd,
++			     struct v4l2_subdev_pad_config *cfg,
++			     struct v4l2_subdev_format *format)
++{
++	struct imx296 *imx296 = to_imx296(sd);
++	struct v4l2_mbus_framefmt *__format;
++	struct v4l2_rect *__crop;
++	const struct imx296_mode_info *new_mode;
++	int ret;
++
++	__crop = __imx296_get_pad_crop(imx296, cfg, format->pad,
++			format->which);
++	new_mode = v4l2_find_nearest_size(imx296_mode_info_data,
++			       ARRAY_SIZE(imx296_mode_info_data),
++			       width, height,
++			       format->format.width, format->format.height);
++
++	__crop->width = new_mode->width;
++	__crop->height = new_mode->height;
++
++	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
++		ret = v4l2_ctrl_s_ctrl(imx296->link_freq,
++				       new_mode->link_freq);
++		if (ret < 0)
++			return ret;
++
++		imx296->current_mode = new_mode;
++	}
++
++	__format = __imx296_get_pad_format(imx296, cfg, format->pad,
++			format->which);
++	__format->width = __crop->width;
++	__format->height = __crop->height;
++    __format->code = MEDIA_BUS_FMT_SRGGB10_1X10;   // [ISP Support PKG] YUV -> RAW10
++	__format->field = V4L2_FIELD_NONE;
++	__format->colorspace = V4L2_COLORSPACE_SRGB;
++
++	format->format = *__format;
++
++	return 0;
++}
++
++static int imx296_entity_init_cfg(struct v4l2_subdev *subdev,
++				  struct v4l2_subdev_pad_config *cfg)
++{
++	struct v4l2_subdev_format fmt = { 0 };
++
++	fmt.which = cfg ? V4L2_SUBDEV_FORMAT_TRY : V4L2_SUBDEV_FORMAT_ACTIVE;
++	fmt.format.width = 1456;
++	fmt.format.height = 1088;
++
++	imx296_set_format(subdev, cfg, &fmt);
++
++	return 0;
++}
++
++static int imx296_get_selection(struct v4l2_subdev *sd,
++			   struct v4l2_subdev_pad_config *cfg,
++			   struct v4l2_subdev_selection *sel)
++{
++	struct imx296 *imx296 = to_imx296(sd);
++
++	if (sel->target != V4L2_SEL_TGT_CROP)
++		return -EINVAL;
++
++	sel->r = *__imx296_get_pad_crop(imx296, cfg, sel->pad,
++					sel->which);
++	return 0;
++}
++
++static int imx296_s_stream(struct v4l2_subdev *subdev, int enable)
++{
++	struct imx296 *imx296 = to_imx296(subdev);
++	int ret;
++
++	if (enable) {
++		ret = imx296_set_register_array(imx296,
++			imx296_init_settings,
++			ARRAY_SIZE(imx296_init_settings));
++		if (ret < 0) {
++			dev_err(imx296->dev,
++				"could not set init registers\n");
++			return ret;
++		}
++	
++		ret = imx296_set_register_array(imx296,
++					imx296->current_mode->data,
++					imx296->current_mode->data_size);
++		if (ret < 0) {
++			dev_err(imx296->dev, "could not set mode %dx%d\n",
++				imx296->current_mode->width,
++				imx296->current_mode->height);
++			return ret;
++		}
++		ret = v4l2_ctrl_handler_setup(&imx296->ctrls);
++		if (ret < 0) {
++			dev_err(imx296->dev, "could not sync v4l2 controls\n");
++			return ret;
++		}
++
++		ret = imx296_write_reg(imx296, STANDBY, 0x00);
++		if (ret < 0)
++			return ret;
++		msleep(10);
++		
++		
++		ret = imx296_write_reg(imx296, XMSTA, 0x00);
++		if (ret < 0)
++			return ret;
++
++		imx296->streaming = enable;
++	} else {
++		imx296->streaming = false;
++		ret = imx296_write_reg(imx296, XMSTA, 0x01);
++		if (ret < 0)
++			return ret;
++		msleep(10);
++		
++		ret = imx296_write_reg(imx296, STANDBY, 0x01);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
++static const struct v4l2_subdev_core_ops imx296_core_ops = {
++	.s_power = imx296_s_power,
++};
++
++static const struct v4l2_subdev_video_ops imx296_video_ops = {
++	.g_frame_interval = imx296_g_frame_interval,
++	.s_frame_interval = imx296_s_frame_interval,
++	.s_stream = imx296_s_stream,
++};
++
++static const struct v4l2_subdev_pad_ops imx296_subdev_pad_ops = {
++	.init_cfg = imx296_entity_init_cfg,
++	.enum_mbus_code = imx296_enum_mbus_code,
++	.enum_frame_size = imx296_enum_frame_size,
++	.get_fmt = imx296_get_format,
++	.set_fmt = imx296_set_format,
++	.get_selection = imx296_get_selection,
++	.enum_frame_interval = imx296_enum_frame_interval,
++};
++
++static const struct v4l2_subdev_ops imx296_subdev_ops = {
++	.core = &imx296_core_ops,
++	.video = &imx296_video_ops,
++	.pad = &imx296_subdev_pad_ops,
++};
++
++static int imx296_probe(struct i2c_client *client)
++{
++	struct device *dev = &client->dev;
++	struct device_node *endpoint;
++	struct imx296 *imx296;
++	u8 chip_id_high, chip_id_low;
++	u32 xclk_freq;
++	int ret;
++
++	imx296 = devm_kzalloc(dev, sizeof(struct imx296), GFP_KERNEL);
++	if (!imx296)
++		return -ENOMEM;
++
++	imx296->i2c_client = client;
++	imx296->dev = dev;
++
++	endpoint = of_graph_get_next_endpoint(dev->of_node, NULL);
++	if (!endpoint) {
++		dev_err(dev, "endpoint node not found\n");
++		return -EINVAL;
++	}
++
++	ret = v4l2_fwnode_endpoint_parse(of_fwnode_handle(endpoint),
++					 &imx296->ep);
++
++	of_node_put(endpoint);
++
++	if (ret < 0) {
++		dev_err(dev, "parsing endpoint node failed\n");
++		return ret;
++	}
++
++	if (imx296->ep.bus_type != V4L2_MBUS_CSI2_DPHY) {
++		dev_err(dev, "invalid bus type, must be CSI2\n");
++		return -EINVAL;
++	}
++
++	/* get system clock (xclk) */
++	imx296->xclk = devm_clk_get(dev, "xclk");
++	if (IS_ERR(imx296->xclk)) {
++		dev_err(dev, "could not get xclk");
++		return PTR_ERR(imx296->xclk);
++	}
++
++	ret = of_property_read_u32(dev->of_node, "clock-frequency", &xclk_freq);
++	if (ret) {
++		dev_err(dev, "could not get xclk frequency\n");
++		return ret;
++	}
++
++	/* external clock must be 24MHz, allow 1% tolerance */
++	if (xclk_freq < 37000000 || xclk_freq > 37250000) {
++		dev_err(dev, "external clock frequency %u is not supported\n",
++			xclk_freq);
++		return -EINVAL;
++	}
++
++	ret = clk_set_rate(imx296->xclk, xclk_freq);
++	if (ret) {
++		dev_err(dev, "could not set xclk frequency\n");
++		return ret;
++	}
++
++	imx296->enable_gpio = devm_gpiod_get(dev, "enable", GPIOD_OUT_HIGH);
++	if (IS_ERR(imx296->enable_gpio)) {
++		dev_err(dev, "cannot get enable gpio\n");
++		return PTR_ERR(imx296->enable_gpio);
++	}
++
++	imx296->rst_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
++	if (IS_ERR(imx296->rst_gpio)) {
++		dev_err(dev, "cannot get reset gpio\n");
++		return PTR_ERR(imx296->rst_gpio);
++	}
++
++	mutex_init(&imx296->power_lock);
++	
++	v4l2_ctrl_handler_init(&imx296->ctrls, 5);
++// [ISP Support PKG] Enabled to set GAIN/EXPOSE 
++	v4l2_ctrl_new_std(&imx296->ctrls, &imx296_ctrl_ops,
++			  V4L2_CID_GAIN, 0, 48, 1, 1);
++	v4l2_ctrl_new_std(&imx296->ctrls, &imx296_ctrl_ops,
++			  V4L2_CID_EXPOSURE, 0, 0xFFFF0, 1, 1);
++	v4l2_ctrl_new_std_menu_items(&imx296->ctrls, &imx296_ctrl_ops,
++				     V4L2_CID_TEST_PATTERN,
++				     ARRAY_SIZE(imx296_test_pattern_menu) - 1,
++				     0, 0, imx296_test_pattern_menu);
++	imx296->pixel_clock = v4l2_ctrl_new_std(&imx296->ctrls,
++						&imx296_ctrl_ops,
++						V4L2_CID_PIXEL_RATE,
++						1, INT_MAX, 1, 145000000);
++	imx296->link_freq = v4l2_ctrl_new_int_menu(&imx296->ctrls,
++						   &imx296_ctrl_ops,
++						   V4L2_CID_LINK_FREQ,
++						   ARRAY_SIZE(link_freq) - 1,
++						   0, link_freq);
++	if (imx296->link_freq)
++		imx296->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
++
++	imx296->sd.ctrl_handler = &imx296->ctrls;
++
++	if (imx296->ctrls.error) {
++		dev_err(dev, "%s: control initialization error %d\n",
++		       __func__, imx296->ctrls.error);
++		ret = imx296->ctrls.error;
++		goto free_ctrl;
++	}
++
++	v4l2_i2c_subdev_init(&imx296->sd, client, &imx296_subdev_ops);
++	imx296->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
++	imx296->pad.flags = MEDIA_PAD_FL_SOURCE;
++	imx296->sd.dev = &client->dev;
++	imx296->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
++
++	ret = media_entity_pads_init(&imx296->sd.entity, 1, &imx296->pad);
++	if (ret < 0) {
++		dev_err(dev, "could not register media entity\n");
++		goto free_ctrl;
++	}
++
++	ret = imx296_s_power(&imx296->sd, true);
++	if (ret < 0) {
++		dev_err(dev, "could not power up IMX296\n");
++		goto free_entity;
++	}
++
++	dev_info(dev, "IMX296 detected at address 0x%02x\n", client->addr);
++
++	imx296_s_power(&imx296->sd, false);
++
++	ret = v4l2_async_register_subdev(&imx296->sd);
++	if (ret < 0) {
++		dev_err(dev, "could not register v4l2 device\n");
++		goto free_entity;
++	}
++
++	imx296_entity_init_cfg(&imx296->sd, NULL);
++
++	return 0;
++
++power_down:
++	imx296_s_power(&imx296->sd, false);
++free_entity:
++	media_entity_cleanup(&imx296->sd.entity);
++free_ctrl:
++	v4l2_ctrl_handler_free(&imx296->ctrls);
++	mutex_destroy(&imx296->power_lock);
++
++	return ret;
++}
++
++static int imx296_remove(struct i2c_client *client)
++{
++	struct v4l2_subdev *sd = i2c_get_clientdata(client);
++	struct imx296 *imx296 = to_imx296(sd);
++
++	v4l2_async_unregister_subdev(&imx296->sd);
++	media_entity_cleanup(&imx296->sd.entity);
++	v4l2_ctrl_handler_free(&imx296->ctrls);
++	mutex_destroy(&imx296->power_lock);
++
++	return 0;
++}
++
++static const struct i2c_device_id imx296_id[] = {
++	{ "imx296", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, imx296_id);
++
++static const struct of_device_id imx296_of_match[] = {
++	{ .compatible = "sony,imx296" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, imx296_of_match);
++
++static struct i2c_driver imx296_i2c_driver = {
++	.driver = {
++		.of_match_table = of_match_ptr(imx296_of_match),
++		.name  = "imx296",
++	},
++	.probe_new  = imx296_probe,
++	.remove = imx296_remove,
++	.id_table = imx296_id,
++};
++
++module_i2c_driver(imx296_i2c_driver);
++
++MODULE_DESCRIPTION("IMX296 Image Sensor driver");
++MODULE_AUTHOR("FRAMOS GmbH");
++MODULE_LICENSE("GPL v2");
+-- 
+2.25.1
+

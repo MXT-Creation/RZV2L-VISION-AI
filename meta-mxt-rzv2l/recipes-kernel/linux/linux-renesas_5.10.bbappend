@@ -5,6 +5,7 @@ KERNEL_DEVICETREE = " \
 	renesas/r9a07g054l2-pivariety-smarc.dtb \
 	renesas/r9a07g054l2-imx135-smarc.dtb \
 	renesas/r9a07g054l2-imx219-smarc.dtb \
+	renesas/r9a07g054l2-imx296-smarc.dtb \
 	renesas/r9a07g054l2-imx477-smarc.dtb \
 	renesas/r9a07g054l2-imx708-smarc.dtb \
 	renesas/r9a07g054l2-ov5647-smarc.dtb \
@@ -52,6 +53,7 @@ SRC_URI_append +=  "\
 	file://patches/2002-media-i2c-backport-Arducam-Pivariety-64MP-camera-s-s.patch \
 	file://patches/2002_r8152_add6400_usb_to_ethernet.patch \
 	file://patches/2003-media-i2c-add-support-for-Sony-IMX135.patch \
+	file://patches/2004-IMX296-camera-module-add-driver-to-i2c-driver-source.patch \
 "
 
 do_compile_prepend() {
