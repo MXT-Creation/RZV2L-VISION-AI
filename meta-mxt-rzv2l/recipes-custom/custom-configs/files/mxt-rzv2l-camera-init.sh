@@ -25,6 +25,18 @@ if media-ctl -d /dev/media0 -V "'tevs 1-0048':0 [fmt:UYVY8_2X8/640x480 field:non
 	exit 0
 fi
 
+# FIXME: we start with 1920x1080 (as it's in the datasheet), but we try to go for 640x480 (if we can)
+if media-ctl -d /dev/media0 -V "'imx415 1-001a':0 [fmt:SGBRG10_1X10/1920x1080 field:none]" &> /dev/null ; then
+	echo "Using camera is 'imx415 1-001a':0"
+	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SGBRG10_1X10/1920x1080 field:none]"
+	media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+
+	echo "NATIVE_CAMERA_IMAGE_WIDTH=1920" > /tmp/app-usbcam-http-config
+	echo "NATIVE_CAMERA_IMAGE_HEIGHT=1080" >> /tmp/app-usbcam-http-config
+
+	exit 0
+fi
+
 if media-ctl -d /dev/media0 -V "'ov5647 1-0036':0 [fmt:SBGGR10_1X10/640x480 field:none]" &> /dev/null ; then
 	echo "Using camera is 'ov5647 1-0036':0"
 	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SBGGR10_1X10/640x480 field:none]"

@@ -54,6 +54,7 @@ SRC_URI_append +=  "\
 	file://patches/2002_r8152_add6400_usb_to_ethernet.patch \
 	file://patches/2003-media-i2c-add-support-for-Sony-IMX135.patch \
 	file://patches/2004-IMX296-camera-module-add-driver-to-i2c-driver-source.patch \
+	file://patches/2005-media-i2c-add-imx415-cmos-image-sensor-driver.patch \
 "
 
 do_compile_prepend() {
