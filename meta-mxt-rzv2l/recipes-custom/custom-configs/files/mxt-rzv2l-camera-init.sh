@@ -66,11 +66,13 @@ if media-ctl -d /dev/media0 -V "'imx219 1-0010':0 [fmt:SRGGB10_1X10/640x480 fiel
 	exit 0
 fi
 
-# FIXME: needs testing
-if media-ctl -d /dev/media0 -V "'imx296 1-001a':0 [fmt:SRGGB10_1X10/640x480 field:none]" &> /dev/null ; then
+if media-ctl -d /dev/media0 -V "'imx296 1-001a':0 [fmt:SBGGR10_1X10/1456x1088 field:none crop:(408,304)/640x480]" &> /dev/null ; then
 	echo "Using camera is 'imx296 1-001a':0"
-	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SRGGB10_1X10/640x480 field:none]"
+	media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:SBGGR10_1X10/640x480 field:none]"
 	media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+
+	v4l2-ctl --set-ctrl=exposure=500
+	v4l2-ctl --set-ctrl=analogue_gain=200
 
 	exit 0
 fi
