@@ -1,6 +1,7 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 KERNEL_DEVICETREE = " \
+	renesas/r9a07g054l2-ar0331-smarc.dtb \
 	renesas/r9a07g054l2-tevs-smarc.dtb \
 	renesas/r9a07g054l2-pivariety-smarc.dtb \
 	renesas/r9a07g054l2-imx135-smarc.dtb \
@@ -56,6 +57,7 @@ SRC_URI_append +=  "\
 	file://patches/2004-media-i2c-IMX296-camera-sensor-driver.patch \
 	file://patches/2005-media-i2c-add-imx415-cmos-image-sensor-driver.patch \
 	file://patches/2006-drivers-media-imx296-Add-standby-delay-during-pro.patch \
+	file://patches/2007-media-i2c-ar0331-add-driver-for-Aptina-OnSemi-AR0331.patch \
 "
 
 do_compile_prepend() {
