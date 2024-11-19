@@ -9,6 +9,7 @@ KERNEL_DEVICETREE = " \
 	renesas/r9a07g054l2-imx296-smarc.dtb \
 	renesas/r9a07g054l2-imx477-smarc.dtb \
 	renesas/r9a07g054l2-imx708-smarc.dtb \
+	renesas/r9a07g054l2-ov13850-smarc.dtb \
 	renesas/r9a07g054l2-ov5647-smarc.dtb \
 "
 
@@ -58,6 +59,7 @@ SRC_URI_append +=  "\
 	file://patches/2005-media-i2c-add-imx415-cmos-image-sensor-driver.patch \
 	file://patches/2006-drivers-media-imx296-Add-standby-delay-during-pro.patch \
 	file://patches/2007-media-i2c-ar0331-add-driver-for-Aptina-OnSemi-AR0331.patch \
+	file://patches/2008-media-i2c-ov13850-add-driver-for-OmniVision-OV13850.patch \
 "
 
 do_compile_prepend() {
