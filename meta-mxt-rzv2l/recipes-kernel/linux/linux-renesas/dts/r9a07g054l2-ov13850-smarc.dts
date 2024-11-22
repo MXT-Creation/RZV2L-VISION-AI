@@ -95,8 +95,7 @@
 		clock-names = "xvclk";
 		clocks = <&clk_ext_camera>;
 		clock-frequency = <24000000>;
-		/* ArduCAM's OV13850 does not seem to care about the reset GPIO */
-		/* reset-gpios = <&pinctrl RZG2L_GPIO(42, 3) GPIO_ACTIVE_HIGH>; */
+		reset-gpios = <&pinctrl RZG2L_GPIO(42, 3) GPIO_ACTIVE_LOW>;
 
 		port {
 			cam1_to_csi: endpoint {
