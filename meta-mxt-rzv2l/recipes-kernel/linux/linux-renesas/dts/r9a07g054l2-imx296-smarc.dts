@@ -49,6 +49,15 @@
 		memory-region = <&image_buf0>;
 	};
 
+	avdd_cam_supply: 3p3v {
+		compatible = "regulator-fixed";
+		regulator-name = "avdd_cam_supply";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpios = <&pinctrl RZG2L_GPIO(42, 3) 0>;
+		startup-delay-us = <500000>;
+	};
+
 	/delete-node/ sound;
 	/delete-node/ sound_card;
 	/delete-node/ hdmi-out;
@@ -95,7 +104,7 @@
 		clock-names = "inck";
 		clocks = <&clk_ext_camera>;
 		clock-frequency = <37125000>;
-		enable-gpios = <&pinctrl RZG2L_GPIO(42, 3) GPIO_ACTIVE_LOW>;
+		avdd-supply = <&avdd_cam_supply>;
 
 		port {
 			cam1_to_csi: endpoint {
