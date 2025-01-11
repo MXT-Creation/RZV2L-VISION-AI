@@ -1659,15 +1659,15 @@ index 000000000..f766d716e
 +		return -EINVAL;
 +	}
 +
-+	ov13850->power_gpio = devm_gpiod_get(dev, "power", GPIOD_OUT_LOW);
++	ov13850->power_gpio = devm_gpiod_get_optional(dev, "power", GPIOD_OUT_LOW);
 +	if (IS_ERR(ov13850->power_gpio))
 +		dev_warn(dev, "Failed to get power-gpios, maybe no use\n");
 +
-+	ov13850->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
++	ov13850->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
 +	if (IS_ERR(ov13850->reset_gpio))
 +		dev_warn(dev, "Failed to get reset-gpios\n");
 +
-+	ov13850->pwdn_gpio = devm_gpiod_get(dev, "pwdn", GPIOD_OUT_LOW);
++	ov13850->pwdn_gpio = devm_gpiod_get_optional(dev, "pwdn", GPIOD_OUT_LOW);
 +	if (IS_ERR(ov13850->pwdn_gpio))
 +		dev_warn(dev, "Failed to get pwdn-gpios\n");
 +
