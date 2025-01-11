@@ -6,7 +6,10 @@ KERNEL_DEVICETREE = " \
 	renesas/r9a07g054l2-pivariety-smarc.dtb \
 	renesas/r9a07g054l2-imx135-smarc.dtb \
 	renesas/r9a07g054l2-imx219-smarc.dtb \
+	renesas/r9a07g054l2-imx274-smarc.dtb \
 	renesas/r9a07g054l2-imx296-smarc.dtb \
+	renesas/r9a07g054l2-imx377-smarc.dtb \
+	renesas/r9a07g054l2-imx415-smarc.dtb \
 	renesas/r9a07g054l2-imx477-smarc.dtb \
 	renesas/r9a07g054l2-imx708-smarc.dtb \
 	renesas/r9a07g054l2-ov13850-smarc.dtb \
@@ -60,6 +63,18 @@ SRC_URI_append +=  "\
 	file://patches/2006-drivers-media-imx296-Add-standby-delay-during-pro.patch \
 	file://patches/2007-media-i2c-ar0331-add-driver-for-Aptina-OnSemi-AR0331.patch \
 	file://patches/2008-media-i2c-ov13850-add-driver-for-OmniVision-OV13850.patch \
+	file://patches/2009-media-i2c-imx274-sync-driver-closer-to-upstream.patch \
+	file://patches/2010-media-i2c-imx274-split-init-controls-in-a-separate-f.patch \
+	file://patches/2011-media-i2c-imx274-add-warn-message-in-case-INCK-rate-.patch \
+	file://patches/2012-media-i2c-imx274-add-pixel_rate-v4l2-control.patch \
+	file://patches/2013-media-i2c-imx274-try-to-talk-with-the-sensor-during-.patch \
+	file://patches/2014-media-i2c-imx274-add-support-for-2-lane-configuratio.patch \
+	file://patches/2015-media-i2c-imx274-fix-cropping-during-binning.patch \
+	file://patches/2017-media-i2c-imx415-Add-more-clock-configurations.patch \
+	file://patches/2018-media-i2c-imx415-bump-delay-time-for-reset-gpio.patch \
+	file://patches/2019-media-i2c-imx415-implement-simple-cropping.patch \
+	file://patches/2020-media-i2c-imx415-implement-2x2-binning.patch \
+	file://patches/2021-media-i2c-imx377-add-support-for-Sony-IMX377.patch \
 "
 
 do_compile_prepend() {

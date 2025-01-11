@@ -49,15 +49,6 @@
 		memory-region = <&image_buf0>;
 	};
 
-	avdd_supply: 3p3v {
-		compatible = "regulator-fixed";
-		regulator-name = "avdd_supply";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		gpios = <&pinctrl RZG2L_GPIO(42, 3) 0>;
-		startup-delay-us = <400000>;
-	};
-
 	/delete-node/ sound;
 	/delete-node/ sound_card;
 	/delete-node/ hdmi-out;
@@ -98,19 +89,18 @@
 
 	status = "okay";
 
-	imx415: imx415@1a {
-		compatible = "sony,imx415";
+	imx377: imx377@1a {
+		compatible = "sony,imx377";
 		reg = <0x1a>;
 		clock-names = "inck";
 		clocks = <&clk_ext_camera>;
 		clock-frequency = <24000000>;
-		avdd-supply = <&avdd_supply>;
+		reset-gpios = <&pinctrl RZG2L_GPIO(10, 0) GPIO_ACTIVE_HIGH>;
 
 		port {
 			cam1_to_csi: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
-				link-frequencies = /bits/ 64 <360000000 720000000>;
 				remote-endpoint = <&csi2_in>;
 			};
 		};
