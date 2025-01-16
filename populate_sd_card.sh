@@ -31,7 +31,8 @@ usage_check "$1" "$YOCTO_DEPLOY_DIR"
 
 WORK_DIR="${YOCTO_DEPLOY_DIR}/build/sd_card"
 
-ROOTFS_IMG_FILE="$YOCTO_DEPLOY_DIR/core-image-bsp-smarc-rzv2l.tar.bz2"
+ROOTFS_IMG_FILE="${ROOTFS_IMG_FILE:-core-image-bsp-smarc-rzv2l.tar.bz2}"
+ROOTFS_IMG_FILE="$YOCTO_DEPLOY_DIR/$ROOTFS_IMG_FILE"
 
 untar_roofs() {
 	local dst="$1"
