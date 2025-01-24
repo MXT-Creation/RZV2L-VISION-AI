@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://application_binaries/licenses/pytorch_vision/LICENSE.
 
 
 SRC_URI = " \
-	file://ai-eva-sw_v7.4.0.tar.bz2 \
+	file://ai-eva-sw_v7.5.0.tar.bz2 \
 "
 
 APP_INSTALL_DIRECTORY ?= "/home/root/RZV_AI_Eva_SW"
@@ -18,6 +18,7 @@ S = "${WORKDIR}"
 
 RDEPENDS_${PN} = "jpeg"
 DEPENDS = "jpeg"
+INSANE_SKIP_${PN} += "file-rdeps"
 
 do_install() {
         install -d ${D}${APP_INSTALL_DIRECTORY}/resnet50_bmp

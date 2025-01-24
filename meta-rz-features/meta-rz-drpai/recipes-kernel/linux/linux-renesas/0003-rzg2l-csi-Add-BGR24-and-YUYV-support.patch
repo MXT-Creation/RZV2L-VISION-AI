@@ -1,16 +1,34 @@
+From ba175ea6c8a131979f77e0f67441a192692dc671 Mon Sep 17 00:00:00 2001
+From: canh dao <canh.dao.ct@renesas.com>
+Date: Mon, 15 Jan 2024 14:22:00 +0700
+Subject: [PATCH] rzg2l-csi-Add-BGR24-and-YUYV-support
+
+Signed-off-by: canh dao <canh.dao.ct@renesas.com>
+---
+ drivers/media/platform/rzg2l-cru/rzg2l-csi2.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
 diff --git a/drivers/media/platform/rzg2l-cru/rzg2l-csi2.c b/drivers/media/platform/rzg2l-cru/rzg2l-csi2.c
-index 8fd7f1d..af77326 100755
+index 511f0ba85..1cba059dd 100644
 --- a/drivers/media/platform/rzg2l-cru/rzg2l-csi2.c
 +++ b/drivers/media/platform/rzg2l-cru/rzg2l-csi2.c
-@@ -103,9 +103,11 @@ struct rzg2l_csi2_format {
- static const struct rzg2l_csi2_format rzg2l_csi2_formats[] = {
- 	{ .code = MEDIA_BUS_FMT_RGB565_2X8_LE,	.bpp = 16 },
- 	{ .code = MEDIA_BUS_FMT_RGB888_1X24,	.bpp = 24 },
-+	{ .code = MEDIA_BUS_FMT_BGR888_1X24,	.bpp = 24 },
- 	{ .code = MEDIA_BUS_FMT_UYVY8_1X16,	.bpp = 16 },
- 	{ .code = MEDIA_BUS_FMT_YUYV8_1X16,	.bpp = 16 },
- 	{ .code = MEDIA_BUS_FMT_UYVY8_2X8,	.bpp = 16 },
-+	{ .code = MEDIA_BUS_FMT_YUYV8_2X8,	.bpp = 16 },
- 	{ .code = MEDIA_BUS_FMT_YUYV10_2X10,	.bpp = 20 },
- 	{ .code = MEDIA_BUS_FMT_SRGGB8_1X8,	.bpp = 8 },
- 	{ .code = MEDIA_BUS_FMT_SGRBG8_1X8,	.bpp = 8 },
+@@ -112,12 +112,16 @@ static const struct rzg2l_csi2_format rzg2l_csi2_formats[] = {
+ 	  .rate = RATE_RANGES(80, 4256)},
+ 	{ .code = MEDIA_BUS_FMT_RGB888_1X24,	.bpp = 24,
+ 	  .rate = RATE_RANGES(80, 6000)},
++	{ .code = MEDIA_BUS_FMT_BGR888_1X24,	.bpp = 24,
++	  .rate = RATE_RANGES(80, 6000)},
+ 	{ .code = MEDIA_BUS_FMT_UYVY8_1X16,	.bpp = 16,
+ 	  .rate = RATE_RANGES(80, 4256)},
+ 	{ .code = MEDIA_BUS_FMT_YUYV8_1X16,	.bpp = 16,
+ 	  .rate = RATE_RANGES(80, 4256)},
+ 	{ .code = MEDIA_BUS_FMT_UYVY8_2X8,	.bpp = 16,
+ 	  .rate = RATE_RANGES(80, 4256)},
++	{ .code = MEDIA_BUS_FMT_YUYV8_2X8,	.bpp = 16,
++	  .rate = RATE_RANGES(80, 4256)},
+ 	{ .code = MEDIA_BUS_FMT_YUYV10_2X10,	.bpp = 20,
+ 	  .rate = RATE_RANGES(80, 5238)},
+ 	{ .code = MEDIA_BUS_FMT_SRGGB8_1X8,	.bpp = 8,
+-- 
+2.25.1
+

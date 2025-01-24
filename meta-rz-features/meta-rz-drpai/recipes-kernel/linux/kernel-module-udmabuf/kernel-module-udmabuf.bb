@@ -6,13 +6,14 @@ LIC_FILES_CHKSUM = " \
 "
 
 inherit module
-require include/rzg2-modules-common.inc
+require include/rz-modules-common.inc
 
 DEPENDS = "linux-renesas"
 PN = "kernel-module-udmabuf"
 PV = "v3.2.4"
 
-SRC_URI = "git://github.com/ikwzm/udmabuf.git;protocol=git;tag=${PV}"
+SRC_URI = "git://github.com/ikwzm/udmabuf.git;protocol=git"
+SRCREV = "24a1346c1f4371ef6161699c8ccb8bf968e6bb0a"
 
 
 SRC_URI_append = " \

@@ -1,59 +1,71 @@
+From 204c51e822935d1a558c4be4577729e98a2ca36e Mon Sep 17 00:00:00 2001
+From: canh dao <canh.dao.ct@renesas.com>
+Date: Tue, 23 Apr 2024 16:56:50 +0700
+Subject: [PATCH] WA-available-v4l2-memory-userptr
+
+Signed-off-by: canh dao <canh.dao.ct@renesas.com>
+---
+ mm/frame_vector.c | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+
 diff --git a/mm/frame_vector.c b/mm/frame_vector.c
-index 0e589a9..e4a252d 100644
+index 1cd81d38ad2d..772b9b7561bd 100644
 --- a/mm/frame_vector.c
 +++ b/mm/frame_vector.c
-@@ -37,6 +37,9 @@ int get_vaddr_frames(unsigned long start, unsigned int nr_frames,
+@@ -41,6 +41,10 @@ int get_vaddr_frames(unsigned long start, unsigned int nr_frames,
  	struct mm_struct *mm = current->mm;
  	struct vm_area_struct *vma;
  	int ret = 0;
-+#if defined(CONFIG_ARCH_R9A09G011GBG) || defined(CONFIG_ARCH_R9A09G055MA3GBG) || defined(CONFIG_ARCH_R9A07G054)
++#if defined(CONFIG_ARCH_R9A09G011) || defined(CONFIG_ARCH_R9A09G055) || defined(CONFIG_ARCH_R9A07G054)
 +	int err;
 +#endif
++
  	int locked;
  
  	if (nr_frames == 0)
-@@ -73,14 +76,44 @@ int get_vaddr_frames(unsigned long start, unsigned int nr_frames,
+@@ -77,12 +81,42 @@ int get_vaddr_frames(unsigned long start, unsigned int nr_frames,
  		vec->is_pfns = false;
  		ret = pin_user_pages_locked(start, nr_frames,
  			gup_flags, (struct page **)(vec->ptrs), &locked);
-+#if defined(CONFIG_ARCH_R9A09G011GBG) || defined(CONFIG_ARCH_R9A09G055MA3GBG) || defined(CONFIG_ARCH_R9A07G054)
-+		goto out;
++#if defined(CONFIG_ARCH_R9A09G011) || defined(CONFIG_ARCH_R9A09G055) || defined(CONFIG_ARCH_R9A07G054)
++                goto out;
 +#else
  		if (likely(ret > 0))
  			goto out;
 +#endif
  	}
  
-+#if defined(CONFIG_ARCH_R9A09G011GBG) || defined(CONFIG_ARCH_R9A09G055MA3GBG) || defined(CONFIG_ARCH_R9A07G054)
-+	vec->got_ref = false;
-+	vec->is_pfns = true;
-+	do {
-+		unsigned long *nums = frame_vector_pfns(vec);
++#if defined(CONFIG_ARCH_R9A09G011) || defined(CONFIG_ARCH_R9A09G055) || defined(CONFIG_ARCH_R9A07G054)
++       vec->got_ref = false;
++       vec->is_pfns = true;
++       do {
++               unsigned long *nums = frame_vector_pfns(vec);
 +
-+		while (ret < nr_frames && start + PAGE_SIZE <= vma->vm_end) {
-+			err = follow_pfn(vma, start, &nums[ret]);
-+			if (err) {
-+				if (ret == 0)
-+					ret = err;
-+				goto out;
-+			}
-+			start += PAGE_SIZE;
-+			ret++;
-+		}
-+		/*
-+		 * We stop if we have enough pages or if VMA doesn't completely
-+		 * cover the tail page.
-+		 */
-+		if (ret >= nr_frames || start < vma->vm_end)
-+			break;
-+		vma = find_vma_intersection(mm, start, start + 1);
-+	} while (vma && vma->vm_flags & (VM_IO | VM_PFNMAP));
++               while (ret < nr_frames && start + PAGE_SIZE <= vma->vm_end) {
++                       err = follow_pfn(vma, start, &nums[ret]);
++                       if (err) {
++                               if (ret == 0)
++                                       ret = err;
++                               goto out;
++                       }
++                       start += PAGE_SIZE;
++                       ret++;
++               }
++               /*
++                * We stop if we have enough pages or if VMA doesn't completely
++                * cover the tail page.
++                */
++               if (ret >= nr_frames || start < vma->vm_end)
++                       break;
++               vma = find_vma_intersection(mm, start, start + 1);
++       } while (vma && vma->vm_flags & (VM_IO | VM_PFNMAP));
 +#else
- 	/* This used to (racily) return non-refcounted pfns. Let people know */
- 	WARN_ONCE(1, "get_vaddr_frames() cannot follow VM_IO mapping");
  	vec->nr_frames = 0;
  
 +#endif
  out:
  	if (locked)
  		mmap_read_unlock(mm);
+-- 
+2.25.1
+

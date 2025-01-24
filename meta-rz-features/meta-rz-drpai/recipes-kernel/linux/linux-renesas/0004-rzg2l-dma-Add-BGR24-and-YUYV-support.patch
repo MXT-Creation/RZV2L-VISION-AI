@@ -1,5 +1,15 @@
+From 317c88e0944ba881147fb99d413c3428cf8f4f6a Mon Sep 17 00:00:00 2001
+From: canh dao <canh.dao.ct@renesas.com>
+Date: Mon, 15 Jan 2024 14:31:53 +0700
+Subject: [PATCH] rzg2l-dma-Add-BGR24-and-YUYV-support
+
+Signed-off-by: canh dao <canh.dao.ct@renesas.com>
+---
+ drivers/media/platform/rzg2l-cru/rzg2l-dma.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
 diff --git a/drivers/media/platform/rzg2l-cru/rzg2l-dma.c b/drivers/media/platform/rzg2l-cru/rzg2l-dma.c
-index de7e3da..442281d 100755
+index e20f5b4bc..9dcc444ed 100644
 --- a/drivers/media/platform/rzg2l-cru/rzg2l-dma.c
 +++ b/drivers/media/platform/rzg2l-cru/rzg2l-dma.c
 @@ -456,11 +456,13 @@ static int rzg2l_cru_mc_validate_format(struct rzg2l_cru_dev *cru,
@@ -16,7 +26,7 @@ index de7e3da..442281d 100755
  		case MEDIA_BUS_FMT_SRGGB8_1X8:
  		case MEDIA_BUS_FMT_SGRBG8_1X8:
  		case MEDIA_BUS_FMT_SGBRG8_1X8:
-@@ -616,6 +618,10 @@ static void rzg2l_cru_csi2_setup(struct rzg2l_cru_dev *cru)
+@@ -618,6 +620,10 @@ static void rzg2l_cru_csi2_setup(struct rzg2l_cru_dev *cru)
  		icnmc = ICnMC_INF_YUV8_422;
  		cru->input_fmt = YUV;
  		break;
@@ -27,7 +37,7 @@ index de7e3da..442281d 100755
  	case MEDIA_BUS_FMT_UYVY10_2X10:
  		icnmc = ICnMC_INF_YUV10_422;
  		cru->input_fmt = YUV;
-@@ -632,7 +638,7 @@ static void rzg2l_cru_csi2_setup(struct rzg2l_cru_dev *cru)
+@@ -634,7 +640,7 @@ static void rzg2l_cru_csi2_setup(struct rzg2l_cru_dev *cru)
  		icnmc = ICnMC_INF_RGB666;
  		cru->input_fmt = RGB;
  		break;
@@ -36,3 +46,6 @@ index de7e3da..442281d 100755
  		icnmc = ICnMC_INF_RGB888;
  		cru->input_fmt = RGB;
  		break;
+-- 
+2.25.1
+

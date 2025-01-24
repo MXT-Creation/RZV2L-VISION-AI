@@ -1,64 +1,96 @@
+From b380c26a08005f60f6640350bf1cdb2c534dc07e Mon Sep 17 00:00:00 2001
+From: canh dao <canh.dao.ct@renesas.com>
+Date: Mon, 15 Jan 2024 14:58:47 +0700
+Subject: [PATCH] enable-drpai-drv
+
+Signed-off-by: canh dao <canh.dao.ct@renesas.com>
+---
+ arch/arm64/boot/dts/renesas/r9a07g054.dtsi    |   20 +
+ .../boot/dts/renesas/r9a07g054l2-dev.dts      |    7 +
+ .../boot/dts/renesas/r9a07g054l2-smarc.dts    |    7 +
+ drivers/Kconfig                               |    3 +
+ drivers/Makefile                              |    1 +
+ drivers/drpai/Kconfig                         |   14 +
+ drivers/drpai/Makefile                        |    8 +
+ drivers/drpai/drpai-core.c                    | 1476 +++++++
+ drivers/drpai/drpai-core.h                    |   86 +
+ drivers/drpai/drpai-if.c                      | 3657 +++++++++++++++++
+ drivers/drpai/drpai-reg.h                     |  290 ++
+ include/linux/drpai.h                         |   22 +
+ include/uapi/linux/drpai.h                    |  129 +
+ 13 files changed, 5720 insertions(+)
+ create mode 100755 drivers/drpai/Kconfig
+ create mode 100755 drivers/drpai/Makefile
+ create mode 100755 drivers/drpai/drpai-core.c
+ create mode 100755 drivers/drpai/drpai-core.h
+ create mode 100755 drivers/drpai/drpai-if.c
+ create mode 100755 drivers/drpai/drpai-reg.h
+ create mode 100755 include/linux/drpai.h
+ create mode 100755 include/uapi/linux/drpai.h
+
 diff --git a/arch/arm64/boot/dts/renesas/r9a07g054.dtsi b/arch/arm64/boot/dts/renesas/r9a07g054.dtsi
-index 478cfab..6d281f7 100755
+index 198fe7421..9243fdca8 100644
 --- a/arch/arm64/boot/dts/renesas/r9a07g054.dtsi
 +++ b/arch/arm64/boot/dts/renesas/r9a07g054.dtsi
-@@ -1589,6 +1589,26 @@
- 				};
- 			};
+@@ -1606,6 +1606,26 @@ edac: edac@11410000 {
+ 			interrupt-names = "ecc_irq";
  		};
+ 
++                drpai0: drpai@12C00000 {
++                        compatible = "renesas,rzv2l-drpai";
++                        reg = <0 0x13000000 0 0x1000000>,
++                                  <0 0x12C00000 0 0x400000>;
++                        clocks = <&cpg CPG_MOD R9A07G054_STPAI_INITCLK>,
++                                         <&cpg CPG_MOD R9A07G054_STPAI_ACLK>,
++                                         <&cpg CPG_MOD R9A07G054_STPAI_MCLK>,
++                                         <&cpg CPG_MOD R9A07G054_STPAI_DCLKIN>,
++                                         <&cpg CPG_MOD R9A07G054_STPAI_ACLK_DRP>;
++                        resets = <&cpg R9A07G054_STPAI_ARESETN>;
++                        power-domains = <&cpg>;
++                        sysctrl = <&sysc>;
++                        clock-names = "intclk","aclk_drp","mclk","dclkin","aclk";
++                        interrupts = <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH>,
++                                                 <GIC_SPI 441 IRQ_TYPE_LEVEL_HIGH>,
++                                                 <GIC_SPI 442 IRQ_TYPE_LEVEL_HIGH>,
++                                                 <GIC_SPI 443 IRQ_TYPE_LEVEL_HIGH>;
++                        status = "okay";
++                };
 +
-+		drpai0: drpai@12C00000 {
-+			compatible = "renesas,rzv2l-drpai";
-+			reg = <0 0x13000000 0 0x1000000>,
-+				  <0 0x12C00000 0 0x400000>;
-+			clocks = <&cpg CPG_MOD R9A07G054_STPAI_INITCLK>,
-+					 <&cpg CPG_MOD R9A07G054_STPAI_ACLK>,
-+					 <&cpg CPG_MOD R9A07G054_STPAI_MCLK>,
-+					 <&cpg CPG_MOD R9A07G054_STPAI_DCLKIN>,
-+					 <&cpg CPG_MOD R9A07G054_STPAI_ACLK_DRP>;
-+			resets = <&cpg R9A07G054_STPAI_ARESETN>;
-+			power-domains = <&cpg>;
-+			sysctrl = <&sysc>;
-+			clock-names = "intclk","aclk_drp","mclk","dclkin","aclk";
-+			interrupts = <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH>,
-+						 <GIC_SPI 441 IRQ_TYPE_LEVEL_HIGH>,
-+						 <GIC_SPI 442 IRQ_TYPE_LEVEL_HIGH>,
-+						 <GIC_SPI 443 IRQ_TYPE_LEVEL_HIGH>;
-+			status = "okay";
-+		};
  	};
  
  	thermal-zones {
 diff --git a/arch/arm64/boot/dts/renesas/r9a07g054l2-dev.dts b/arch/arm64/boot/dts/renesas/r9a07g054l2-dev.dts
-index cc72709..0ad90b7 100755
+index 56a7c9e62..b546da25d 100644
 --- a/arch/arm64/boot/dts/renesas/r9a07g054l2-dev.dts
 +++ b/arch/arm64/boot/dts/renesas/r9a07g054l2-dev.dts
-@@ -93,3 +93,9 @@
+@@ -94,3 +94,10 @@ &ehci1 {
  &ohci1 {
  	memory-region = <&global_cma>;
  };
 +
 +&drpai0 {
-+	memory-region = <&drp_reserved>;
-+	linux-memory-region = < &{/memory@48000000} >; 
-+	status = "okay";
++       memory-region = <&drp_reserved>;
++       linux-memory-region = < &{/memory@48000000} >;
++       status = "okay";
 +};
++
 diff --git a/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts b/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts
-index 73ae301..2d538ee 100755
+index e63ac846c..47c03c8bd 100644
 --- a/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts
 +++ b/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts
-@@ -49,3 +49,9 @@
- 		memory-region = <&image_buf0>;
- 	};
+@@ -49,3 +49,10 @@ udmabuf@0 {
+                memory-region = <&image_buf0>;
+        };
  };
 +
 +&drpai0 {
-+	memory-region = <&drp_reserved>;
-+	linux-memory-region = < &{/memory@48000000} >; 
-+	status = "okay";
++       memory-region = <&drp_reserved>;
++       linux-memory-region = < &{/memory@48000000} >;
++       status = "okay";
 +};
++
 diff --git a/drivers/Kconfig b/drivers/Kconfig
-index dcecc9f..63f231e 100755
+index dcecc9f6e..63f231eb5 100644
 --- a/drivers/Kconfig
 +++ b/drivers/Kconfig
 @@ -235,4 +235,7 @@ source "drivers/interconnect/Kconfig"
@@ -70,17 +102,17 @@ index dcecc9f..63f231e 100755
 +
  endmenu
 diff --git a/drivers/Makefile b/drivers/Makefile
-index 5762280..354b8fd 100755
+index 576228037..8dac6a9de 100644
 --- a/drivers/Makefile
 +++ b/drivers/Makefile
 @@ -189,3 +189,4 @@ obj-$(CONFIG_GNSS)		+= gnss/
  obj-$(CONFIG_INTERCONNECT)	+= interconnect/
  obj-$(CONFIG_COUNTER)		+= counter/
  obj-$(CONFIG_MOST)		+= most/
-+obj-$(CONFIG_DRPAI)		+= drpai/
-diff --git b/drivers/drpai/Kconfig b/drivers/drpai/Kconfig
++obj-$(CONFIG_DRPAI)             += drpai/
+diff --git a/drivers/drpai/Kconfig b/drivers/drpai/Kconfig
 new file mode 100755
-index 0000000..834a355
+index 000000000..834a35593
 --- /dev/null
 +++ b/drivers/drpai/Kconfig
 @@ -0,0 +1,14 @@
@@ -98,9 +130,9 @@ index 0000000..834a355
 +	  If you want DRP-AI support, you should say Y here.
 +
 +endmenu
-diff --git b/drivers/drpai/Makefile b/drivers/drpai/Makefile
+diff --git a/drivers/drpai/Makefile b/drivers/drpai/Makefile
 new file mode 100755
-index 0000000..3d44ea4
+index 000000000..3d44ea4e2
 --- /dev/null
 +++ b/drivers/drpai/Makefile
 @@ -0,0 +1,8 @@
@@ -112,9 +144,9 @@ index 0000000..3d44ea4
 +obj-$(CONFIG_DRPAI)	+= drpai-core.o drpai-if.o
 +
 +
-diff --git b/drivers/drpai/drpai-core.c b/drivers/drpai/drpai-core.c
+diff --git a/drivers/drpai/drpai-core.c b/drivers/drpai/drpai-core.c
 new file mode 100755
-index 0000000..9a4d796
+index 000000000..9a4d796af
 --- /dev/null
 +++ b/drivers/drpai/drpai-core.c
 @@ -0,0 +1,1476 @@
@@ -147,7 +179,7 @@ index 0000000..9a4d796
 +#include "drpai-core.h"
 +#include "drpai-reg.h"
 +
-+#if defined(CONFIG_ARCH_R9A09G011GBG) || defined(CONFIG_ARCH_R9A09G055MA3GBG)
++#if defined(CONFIG_ARCH_R9A09G011) || defined(CONFIG_ARCH_R9A09G055)
 +/* V2M(A) conditional compilation */
 +#define SET_STPC_CLKGEN_DIV                 (0x00030001)
 +#elif defined(CONFIG_ARCH_R9A07G054)
@@ -1582,10 +1614,10 @@ index 0000000..9a4d796
 +    return ret;
 +}
 +
-+#if defined(CONFIG_ARCH_R9A09G011GBG) 
++#if defined(CONFIG_ARCH_R9A09G011) 
 +/* V2M conditional compilation */
 +MODULE_DESCRIPTION("RZ/V2M DRPAI driver");
-+#elif defined(CONFIG_ARCH_R9A09G055MA3GBG)
++#elif defined(CONFIG_ARCH_R9A09G055)
 +/* V2MA conditional compilation */
 +MODULE_DESCRIPTION("RZ/V2MA DRPAI driver");
 +#elif defined(CONFIG_ARCH_R9A07G054)
@@ -1594,9 +1626,9 @@ index 0000000..9a4d796
 +#endif
 +MODULE_AUTHOR("Renesas Electronics Corporation");
 +MODULE_LICENSE("GPL v2");
-diff --git b/drivers/drpai/drpai-core.h b/drivers/drpai/drpai-core.h
+diff --git a/drivers/drpai/drpai-core.h b/drivers/drpai/drpai-core.h
 new file mode 100755
-index 0000000..76ec345
+index 000000000..76ec34524
 --- /dev/null
 +++ b/drivers/drpai/drpai-core.h
 @@ -0,0 +1,86 @@
@@ -1686,9 +1718,9 @@ index 0000000..76ec345
 +int32_t R_DRPB_DRP_Errint(void __iomem *drp_base_addr, int32_t ch);
 +
 +#endif /* R_DRPAI_CORE_H */
-diff --git b/drivers/drpai/drpai-if.c b/drivers/drpai/drpai-if.c
+diff --git a/drivers/drpai/drpai-if.c b/drivers/drpai/drpai-if.c
 new file mode 100755
-index 0000000..f251f9f
+index 000000000..f251f9f56
 --- /dev/null
 +++ b/drivers/drpai/drpai-if.c
 @@ -0,0 +1,3657 @@
@@ -1762,7 +1794,7 @@ index 0000000..f251f9f
 +#endif
 +
 +/*Macro definitions*/
-+#define DRPAI_DRIVER_VERSION        "2.10 rel.1"
++#define DRPAI_DRIVER_VERSION        "2.10 rel.3"
 +#define DRPAI_DEV_NUM               (1)
 +#define DRPAI_DRIVER_NAME           "drpai"     /* Device name */
 +#define DRPAI_64BYTE_ALIGN          (0x3F)      /* Check 64-byte alignment */
@@ -2777,7 +2809,7 @@ index 0000000..f251f9f
 +        wake_up_interruptible( &drpai_waitq );
 +    }
 +    priv->isp_finish_loc = NULL;
-+#elif defined(CONFIG_ARCH_R9A09G011GBG) || defined(CONFIG_ARCH_R9A09G055MA3GBG)
++#elif defined(CONFIG_ARCH_R9A09G011) || defined(CONFIG_ARCH_R9A09G055)
 +    /* V2M(A) conditional compilation */
 +    /* Wake up the process */
 +    wake_up_interruptible( &drpai_waitq );
@@ -5336,10 +5368,10 @@ index 0000000..f251f9f
 +module_platform_driver(drpai_platform_driver);
 +MODULE_DEVICE_TABLE(of, drpai_match);
 +
-+#if defined(CONFIG_ARCH_R9A09G011GBG) 
++#if defined(CONFIG_ARCH_R9A09G011) 
 +/* V2M conditional compilation */
 +MODULE_DESCRIPTION("RZ/V2M DRPAI driver");
-+#elif defined(CONFIG_ARCH_R9A09G055MA3GBG)
++#elif defined(CONFIG_ARCH_R9A09G055)
 +/* V2MA conditional compilation */
 +MODULE_DESCRIPTION("RZ/V2MA DRPAI driver");
 +#elif defined(CONFIG_ARCH_R9A07G054)
@@ -5349,9 +5381,9 @@ index 0000000..f251f9f
 +MODULE_AUTHOR("Renesas Electronics Corporation");
 +MODULE_LICENSE("GPL v2");
 +
-diff --git b/drivers/drpai/drpai-reg.h b/drivers/drpai/drpai-reg.h
+diff --git a/drivers/drpai/drpai-reg.h b/drivers/drpai/drpai-reg.h
 new file mode 100755
-index 0000000..2f88206
+index 000000000..2f88206cd
 --- /dev/null
 +++ b/drivers/drpai/drpai-reg.h
 @@ -0,0 +1,290 @@
@@ -5645,9 +5677,9 @@ index 0000000..2f88206
 +#define DRPAI_BIT31                     (0x80000000u)
 +
 +#endif /* R_DRPAI_REG_H */
-diff --git b/include/linux/drpai.h b/include/linux/drpai.h
+diff --git a/include/linux/drpai.h b/include/linux/drpai.h
 new file mode 100755
-index 0000000..8b6cf6b
+index 000000000..8b6cf6bbf
 --- /dev/null
 +++ b/include/linux/drpai.h
 @@ -0,0 +1,22 @@
@@ -5673,9 +5705,9 @@ index 0000000..8b6cf6b
 +#include <uapi/linux/drpai.h>
 +
 +#endif /* _DRPAI_H */
-diff --git b/include/uapi/linux/drpai.h b/include/uapi/linux/drpai.h
+diff --git a/include/uapi/linux/drpai.h b/include/uapi/linux/drpai.h
 new file mode 100755
-index 0000000..ee1f32a
+index 000000000..ee1f32a94
 --- /dev/null
 +++ b/include/uapi/linux/drpai.h
 @@ -0,0 +1,129 @@
@@ -5808,3 +5840,6 @@ index 0000000..ee1f32a
 +#endif
 +
 +#endif /* _UAPI__DRPAI_H */
+-- 
+2.25.1
+

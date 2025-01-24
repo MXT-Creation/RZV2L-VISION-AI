@@ -1,0 +1,49 @@
+From 4ef55ed87739360314cd5373b55c797daf4b983b Mon Sep 17 00:00:00 2001
+From: canh dao <canh.dao.ct@renesas.com>
+Date: Mon, 18 Mar 2024 10:23:15 +0700
+Subject: [PATCH] Apply fix user memory access error to cache flush processing
+
+In order for the DRP-AI Sample Application to change from udmabuf to mmngr, we have to make some changes to mmngr (flush processing to be added), however when adding it the error with kernel access occurred (unable to access to user memory out). So we modified mmngr code to support flush processing.
+
+Signed-off-by: canh dao <canh.dao.ct@renesas.com>
+---
+ .../mmngr/mmngr-module/files/mmngr/drv/mmngr_drv.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv/mmngr_drv.c b/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv/mmngr_drv.c
+index 4488837..4cf8229 100644
+--- a/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv/mmngr_drv.c
++++ b/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv/mmngr_drv.c
+@@ -963,7 +963,7 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	int		ercd;
+ 	int		ret;
+ 	struct MM_PARAM	*p = file->private_data;
+-	struct MM_CACHE_PARAM *cachep;
++	struct MM_CACHE_PARAM cachep;
+ 	struct device	*mm_dev;
+ 
+ 	mm_dev = mm_drvdata->mm_dev;
+@@ -1016,14 +1016,14 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 		}
+ 		break;
+ 	case MM_IOC_FLUSH:
+-		cachep = (struct MM_CACHE_PARAM *)arg;
+-		dma_sync_single_for_device(mm_dev, p->hard_addr + cachep->offset,
+-					   cachep->len, DMA_FROM_DEVICE);
++		copy_from_user(&cachep, arg, sizeof(struct MM_CACHE_PARAM));
++		dma_sync_single_for_device(mm_dev, p->hard_addr + cachep.offset,
++					cachep.len, DMA_FROM_DEVICE);
+ 		break;
+ 	case MM_IOC_INVAL:
+-		cachep = (struct MM_CACHE_PARAM *)arg;
+-		dma_sync_single_for_cpu(mm_dev, p->hard_addr + cachep->offset,
+-					cachep->len, DMA_TO_DEVICE);
++		copy_from_user(&cachep, arg, sizeof(struct MM_CACHE_PARAM));
++		dma_sync_single_for_cpu(mm_dev, p->hard_addr + cachep.offset,
++					cachep.len, DMA_TO_DEVICE);
+ 		break;
+ 	case MM_IOC_VTOP:   /* change virtual address to physical address */
+ 		mm_cnv_addr((int __user *)arg);
+-- 
+2.25.1
+
