@@ -11,7 +11,7 @@ LIC_FILES_CHKSUM = " \
     file://src/cmn/MIT-COPYING;md5=fea016ce2bdf2ec10080f69e9381d378 \
 "
 inherit module
-require include/rzg2-modules-common.inc
+require include/rz-modules-common.inc
 PR = "r0"
 
 COMPATIBLE_MACHINE_rzg2l = "(r9a07g044l|r9a07g054l)"

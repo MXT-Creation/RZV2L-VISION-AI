@@ -5,24 +5,20 @@ DEPENDS = "gstreamer1.0 gstreamer1.0-plugins-base pkgconfig vspmif-user-module k
 LIC_FILES_CHKSUM = "file://COPYING.LIB;md5=6762ed442b3822387a51c92d928ead0d"
 inherit autotools pkgconfig
 
+GST_PLUGIN_VSPMFILTER_URL = "git://github.com/renesas-rz/rzg_gstreamer_vspmfilter"
+
+BRANCH_rzg2h = "rz_g2"
+BRANCH_rzg2l = "rz_g2l"
+
 SRC_URI = " \
-    file://vspmfilter.tar.xz \
+    ${GST_PLUGIN_VSPMFILTER_URL};protocol=https;branch=${BRANCH} \
     file://0001-Update-correct-base-number-of-VTOP-ioctl.patch \
-    file://0002-Fix-issue-vspmfilter-cannot-plugin.patch \
 "
 
-SRC_URI_append_rzg2l = " \
-    file://0003-Support-Resize-and-Color-fomat.patch \
-    file://0004-gstvspmfilter-Fix-ISU-limitation-about-alignment.patch \
-    file://0005-recipes-codec-gstreamer1.0-plugin-vspmfilter-Disable.patch \
-    file://0006-vspmfilter-Skip-the-frame-if-physical-address-is-NUL.patch \
-    file://0007-vspmfilter-Try-to-get-physical-address-from-dmabuf-f.patch \
-    file://0008-vspmfilter-Handle-release-the-mmngr-import-pid.patch \
-    file://0009-Change-default-format-to-ISU_YUV420_NV12.patch \
-    file://0010-Meta-rz-codecs-vspmfilter-Fix-miscalculation-of-buff.patch \
-"
+SRCREV_rzg2h = "b63d0bbbe61494c9dd7501875c1943e322f224e6"
+SRCREV_rzg2l = "292f1df4f0ab58a7b533480b0c75493f56152b87"
 
-S = "${WORKDIR}/vspmfilter"
+S = "${WORKDIR}/git"
 PV = "1.16.3"
 
 FILES_${PN} = " \

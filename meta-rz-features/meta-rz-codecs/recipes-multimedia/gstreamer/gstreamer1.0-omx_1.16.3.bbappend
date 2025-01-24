@@ -5,24 +5,28 @@ SRC_URI_remove = "https://gstreamer.freedesktop.org/src/gst-omx/gst-omx-${PV}.ta
 SRC_URI_append = " \
     git://github.com/renesas-rcar/gst-omx.git;branch=RCAR-GEN3e/1.16.3;name=base \
     git://gitlab.freedesktop.org/gstreamer/common;destsuffix=git/common;name=common \
-    file://0002-Fix-error-Resolution-do-not-match-in-running-case-fi.patch \
-    file://0004-gst-pipeline-cannot-corectly-decode-with-vspmfilter-.patch \
+    file://0001-omxvideodec-don-t-drop-frame-if-it-contains-header-d.patch \
 "
 
 SRC_URI_append_rzg2l = " \
     file://gstomx-rzg2l.conf \
     file://0001-Support-Bypass-mode.patch \
+    file://0002-Fix-error-Resolution-do-not-match-in-running-case-fi.patch \
     file://0003-Add-lossy-compress-option-and-bypass-property.patch \
+    file://0004-gst-pipeline-cannot-corectly-decode-with-vspmfilter-.patch \
+    file://0005-Add-number-of-output-buffers-option.patch \
+    file://0006-Set-output-framerate-same-as-input-framerate.patch \
+    file://0007-Fix-error-Adaptive-playback-ignores-user-settings.patch \
+    file://0008-Support-updating-stride-and-sliceheight-using-input-.patch \
 "
 
 SRC_URI_append_rzg2h = " \
-    file://0001-omxvideodec-don-t-drop-frame-if-it-contains-header-d.patch \
     file://gstomx-rzg2h.conf \
 "
 
-require include/rzg2-path-common.inc
+require include/rz-path-common.inc
 
-DEPENDS += "omx-user-module mmngrbuf-user-module"
+DEPENDS += "codec-user-module mmngrbuf-user-module"
 
 SRCREV_base = "6db86e9434815d27de853b4c8235d098da5500a2"
 SRCREV_common = "52adcdb89a9eb527df38c569539d95c1c7aeda6e"
@@ -48,5 +52,5 @@ do_configure_prepend() {
     cd ${B}
 }
 
-RDEPENDS_${PN}_append = " omx-user-module"
+RDEPENDS_${PN}_append = " codec-user-module"
 RDEPENDS_${PN}_remove = "libomxil"

@@ -10,5 +10,5 @@ LICENSE_FLAGS_WHITELIST_append=" \
 
 IMAGE_INSTALL_append =" \
 	${@bb.utils.contains("USE_VIDEO_OMX", "1", " kernel-module-uvcs-drv ", "", d)} \
-	${@bb.utils.contains("USE_VIDEO_OMX", "1", " omx-user-module ", "",d)} \
+	${@bb.utils.contains("USE_VIDEO_OMX", "1", " codec-user-module ", "",d)} \
 "
