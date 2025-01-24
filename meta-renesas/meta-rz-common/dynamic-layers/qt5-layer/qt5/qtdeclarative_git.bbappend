@@ -14,3 +14,9 @@ SRC_URI_append = " \
     file://0001-Build-developer-mode.patch \
     file://0002-qtdeclarative-switch-to-use-python3-instead-of-pytho.patch \
 "
+
+# Avoid error in do_package_qa due to missing rdepends to graphic libraries
+# Should not use RDEPENDS here because graphic libraries can be provided by different packages
+INSANE_SKIP_${PN}_append = " file-rdeps"
+INSANE_SKIP_${PN}-examples_append = " file-rdeps"
+INSANE_SKIP_${PN}-tools_append = " file-rdeps"

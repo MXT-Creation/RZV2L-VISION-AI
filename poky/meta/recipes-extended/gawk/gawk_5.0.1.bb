@@ -16,7 +16,9 @@ PACKAGECONFIG[readline] = "--with-readline,--without-readline,readline"
 PACKAGECONFIG[mpfr] = "--with-mpfr,--without-mpfr, mpfr"
 
 SRC_URI = "${GNU_MIRROR}/gawk/gawk-${PV}.tar.gz \
+           file://remove-sensitive-tests.patch \
            file://run-ptest \
+           file://CVE-2023-4156.patch \
 "
 
 SRC_URI[md5sum] = "c5441c73cc451764055ee65e9a4292bb"
@@ -41,13 +43,20 @@ inherit ptest
 do_install_ptest() {
 	mkdir ${D}${PTEST_PATH}/test
 	ln -s ${bindir}/gawk ${D}${PTEST_PATH}/gawk
-	for i in `grep -vE "@|^$|#|Gt-dummy" ${S}/test/Maketests |awk -F: '{print $1}'` Maketests inclib.awk; \
-	  do cp ${S}/test/$i* ${D}${PTEST_PATH}/test; \
+	# The list of tests is all targets in Maketests, apart from the dummy Gt-dummy
+	TESTS=$(awk -F: '$1 == "Gt-dummy" { next } /[[:alnum:]]+:$/ { print $1 }' ${S}/test/Maketests)
+	for i in $TESTS Maketests inclib.awk; do
+		cp ${S}/test/$i* ${D}${PTEST_PATH}/test
 	done
 	sed -i -e 's|/usr/local/bin|${bindir}|g' \
 	    -e 's|#!${base_bindir}/awk|#!${bindir}/awk|g' ${D}${PTEST_PATH}/test/*.awk
 
-        sed -i -e "s|GAWKLOCALE|LANG|g" ${D}${PTEST_PATH}/test/Maketests
+	sed -i -e "s|GAWKLOCALE|LANG|g" ${D}${PTEST_PATH}/test/Maketests
+
+	# These tests require an unloaded host as otherwise timing sensitive tests can fail
+	# https://bugzilla.yoctoproject.org/show_bug.cgi?id=14371
+	rm -f ${D}${PTEST_PATH}/test/time.*
+	rm -f ${D}${PTEST_PATH}/test/timeout.*
 }
 
 RDEPENDS_${PN}-ptest += "make"

@@ -18,6 +18,7 @@ SRC_URI += "file://touchscreen.rules \
            file://00-create-volatile.conf \
            file://init \
            file://99-default.preset \
+           file://systemd-pager.sh \
            file://0001-binfmt-Don-t-install-dependency-links-at-install-tim.patch \
            file://0003-implment-systemd-sysv-install-for-OE.patch \
            file://CVE-2021-33910.patch \
@@ -30,9 +31,15 @@ SRC_URI += "file://touchscreen.rules \
            file://network-fix-Link-reference-counter-issue.patch \
            file://rm-rf-refactor-rm-rf-children-split-out-body-of-directory.patch \
            file://rm-rf-optionally-fsync-after-removing-directory-tree.patch \
+           file://CVE-2018-21029.patch \
            file://CVE-2021-3997-1.patch \
            file://CVE-2021-3997-2.patch \
            file://CVE-2021-3997-3.patch \
+           file://CVE-2022-3821.patch \
+           file://CVE-2023-26604-1.patch \
+           file://CVE-2023-26604-2.patch \
+           file://CVE-2023-26604-3.patch \
+           file://CVE-2023-26604-4.patch \
            "
 
 # patches needed by musl
@@ -213,7 +220,7 @@ rootlibexecdir = "${rootprefix}/lib"
 EXTRA_OEMESON += "-Dlink-udev-shared=false"
 
 EXTRA_OEMESON += "-Dnobody-user=nobody \
-                  -Dnobody-group=nobody \
+                  -Dnobody-group=nogroup \
                   -Drootlibdir=${rootlibdir} \
                   -Drootprefix=${rootprefix} \
                   -Ddefault-locale=C \
@@ -316,6 +323,9 @@ do_install() {
 	# install default policy for presets
 	# https://www.freedesktop.org/wiki/Software/systemd/Preset/#howto
 	install -Dm 0644 ${WORKDIR}/99-default.preset ${D}${systemd_unitdir}/system-preset/99-default.preset
+
+	# add a profile fragment to disable systemd pager with busybox less
+	install -Dm 0644 ${WORKDIR}/systemd-pager.sh ${D}${sysconfdir}/profile.d/systemd-pager.sh
 }
 
 python populate_packages_prepend (){
@@ -403,9 +413,9 @@ FILES_${PN}-binfmt = "${sysconfdir}/binfmt.d/ \
                       ${rootlibexecdir}/systemd/systemd-binfmt \
                       ${systemd_unitdir}/system/proc-sys-fs-binfmt_misc.* \
                       ${systemd_unitdir}/system/systemd-binfmt.service"
-RRECOMMENDS_${PN}-binfmt = "kernel-module-binfmt-misc"
+RRECOMMENDS_${PN}-binfmt = "${@bb.utils.contains('PACKAGECONFIG', 'binfmt', 'kernel-module-binfmt-misc', '', d)}"
 
-RRECOMMENDS_${PN}-vconsole-setup = "kbd kbd-consolefonts kbd-keymaps"
+RRECOMMENDS_${PN}-vconsole-setup = "${@bb.utils.contains('PACKAGECONFIG', 'vconsole', 'kbd kbd-consolefonts kbd-keymaps', '', d)}"
 
 
 FILES_${PN}-journal-gatewayd = "${rootlibexecdir}/systemd/systemd-journal-gatewayd \
@@ -538,6 +548,7 @@ FILES_${PN} = " ${base_bindir}/* \
                 ${sysconfdir}/dbus-1/ \
                 ${sysconfdir}/modules-load.d/ \
                 ${sysconfdir}/pam.d/ \
+                ${sysconfdir}/profile.d/ \
                 ${sysconfdir}/sysctl.d/ \
                 ${sysconfdir}/systemd/ \
                 ${sysconfdir}/tmpfiles.d/ \

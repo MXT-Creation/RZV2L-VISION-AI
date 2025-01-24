@@ -58,7 +58,11 @@ def append_resultsdata(results, f, configmap=store_map, configvars=extra_configv
             testseries = posixpath.basename(posixpath.dirname(url.path))
         else:
             with open(f, "r") as filedata:
-                data = json.load(filedata)
+                try:
+                    data = json.load(filedata)
+                except json.decoder.JSONDecodeError:
+                    print("Cannot decode {}. Possible corruption. Skipping.".format(f))
+                    data = ""
             testseries = os.path.basename(os.path.dirname(f))
     else:
         data = f
@@ -142,7 +146,7 @@ def generic_get_log(sectionname, results, section):
     return decode_log(ptest['log'])
 
 def ptestresult_get_log(results, section):
-    return generic_get_log('ptestresuls.sections', results, section)
+    return generic_get_log('ptestresult.sections', results, section)
 
 def generic_get_rawlogs(sectname, results):
     if sectname not in results:

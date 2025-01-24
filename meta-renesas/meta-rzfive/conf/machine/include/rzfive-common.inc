@@ -1,4 +1,5 @@
 require conf/machine/include/${SOC_FAMILY}.inc
+require include/ecc-control.inc
 
 MACHINEOVERRIDES =. "rzfive:"
 
@@ -6,6 +7,7 @@ MACHINE_FEATURES = ""
 
 KERNEL_IMAGETYPE = "Image"
 IMAGE_FSTYPES_append = " tar.bz2 ext4"
+IMAGE_FSTYPES_append = " ${@oe.utils.conditional("WKS_SUPPORT", "1", "wic.gz wic.bmap", "", d)} "
 
 SERIAL_CONSOLES = "115200;ttySC0"
 
@@ -26,7 +28,7 @@ PREFERRED_VERSION_gdbm-native ?= "${@bb.utils.contains("INCOMPATIBLE_LICENSE", "
 PREFERRED_VERSION_u-boot = "v2021.10%"
 EXTRA_IMAGEDEPENDS += " u-boot"
 
-PACKAGE_INSTALL_remove += " optee-client v4l2-init "
+PACKAGE_INSTALL_remove += " v4l2-init "
 
 DISTRO_FEATURES_append = " docker"
 

@@ -21,6 +21,11 @@ SRC_URI_append = " \
 	file://0009-qsgvideonode-fix-issue-double-free-in-race-condition.patch \
 	file://0010-add_QtGstLaunch_service.patch \
 	file://0011-qgstlaunch-Add-returned-value-for-callback-function-.patch \
+	file://0012-plugins-alsa-Add-default-key-for-alsa-plugin.patch \
+"
+
+SRC_URI_append_rzg2l = " \
+        file://0013-qtmultimedia-fix-blank-video-output-for-g2l.patch \
 "
 
 PACKAGECONFIG_append = " gstreamer alsa"
@@ -37,3 +42,8 @@ RDEPENDS_${PN}-plugins += " \
 	gstreamer1.0-plugins-bad \
 	libgstbasecamerabinsrc-1.0 \
 "
+
+# Avoid error in do_package_qa due to missing rdepends to graphic libraries
+# Should not use RDEPENDS here because graphic libraries can be provided by different packages
+INSANE_SKIP_${PN}_append = " file-rdeps"
+INSANE_SKIP_${PN}-plugins_append = " file-rdeps"

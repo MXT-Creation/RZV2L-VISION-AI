@@ -34,6 +34,8 @@ python uninative_event_fetchloader() {
         with open(loaderchksum, "r") as f:
             readchksum = f.read().strip()
         if readchksum == chksum:
+            if "uninative" not in d.getVar("SSTATEPOSTUNPACKFUNCS"):
+                enable_uninative(d)
             return
 
     import subprocess
@@ -167,5 +169,7 @@ python uninative_changeinterp () {
             if not elf.isDynamic():
                 continue
 
+            os.chmod(f, s[stat.ST_MODE] | stat.S_IWUSR)
             subprocess.check_output(("patchelf-uninative", "--set-interpreter", d.getVar("UNINATIVE_LOADER"), f), stderr=subprocess.STDOUT)
+            os.chmod(f, s[stat.ST_MODE])
 }

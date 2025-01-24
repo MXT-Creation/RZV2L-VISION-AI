@@ -10,3 +10,4 @@ do_install_append () {
 }
 
 FILES_${PN} += " /home/root/v4l2-init.sh "
+RDEPENDS_${PN} += "bash"

@@ -6,7 +6,7 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 FLASH_WRITER_URL = "git://github.com/renesas-rz/rzg2_flash_writer"
 BRANCH = "rz_five"
-SRCREV = "68cb0875cfcc5c5295ad74e6b97798ba5fad8126"
+SRCREV = "7c6d0636d045631c856bf5138647d5d0769ef9ea"
 
 SRC_URI = " \
 	${FLASH_WRITER_URL};protocol=https;branch=${BRANCH} \

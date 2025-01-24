@@ -969,6 +969,17 @@ def which(path, item, direction = 0, history = False, executable=False):
         return "", hist
     return ""
 
+@contextmanager
+def umask(new_mask):
+    """
+    Context manager to set the umask to a specific mask, and restore it afterwards.
+    """
+    current_mask = os.umask(new_mask)
+    try:
+        yield
+    finally:
+        os.umask(current_mask)
+
 def to_boolean(string, default=None):
     if not string:
         return default
@@ -1570,21 +1581,22 @@ def set_process_name(name):
 
 # export common proxies variables from datastore to environment
 def export_proxies(d):
-    import os
+    """ export common proxies variables from datastore to environment """
 
     variables = ['http_proxy', 'HTTP_PROXY', 'https_proxy', 'HTTPS_PROXY',
                     'ftp_proxy', 'FTP_PROXY', 'no_proxy', 'NO_PROXY',
-                    'GIT_PROXY_COMMAND']
+                    'GIT_PROXY_COMMAND', 'SSL_CERT_FILE', 'SSL_CERT_DIR']
     exported = False
 
-    for v in variables:
-        if v in os.environ.keys():
+    origenv = d.getVar("BB_ORIGENV")
+
+    for name in variables:
+        value = d.getVar(name)
+        if not value and origenv:
+            value = origenv.getVar(name)
+        if value:
+            os.environ[name] = value
             exported = True
-        else:
-            v_proxy = d.getVar(v)
-            if v_proxy is not None:
-                os.environ[v] = v_proxy
-                exported = True
 
     return exported
 

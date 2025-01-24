@@ -40,6 +40,24 @@ SRC_URI = "https://curl.haxx.se/download/curl-${PV}.tar.bz2 \
            file://CVE-2022-32208.patch \
            file://CVE-2022-35252.patch \
            file://CVE-2022-32221.patch \
+           file://CVE-2022-35260.patch \
+           file://CVE-2022-43552.patch \
+           file://CVE-2023-23916.patch \
+           file://CVE-2023-27534-pre1.patch \
+           file://CVE-2023-27534.patch \
+           file://CVE-2023-27538.patch \
+           file://CVE-2023-27533.patch \
+           file://CVE-2023-27535-pre1.patch \
+           file://CVE-2023-27535.patch \
+           file://CVE-2023-27536.patch \
+           file://CVE-2023-28320.patch \
+           file://CVE-2023-28320-fol1.patch \
+           file://CVE-2023-32001.patch \
+           file://CVE-2023-38545.patch \
+           file://CVE-2023-38546.patch \
+           file://CVE-2023-28321.patch \
+           file://CVE-2023-28322.patch \
+           file://CVE-2023-46218.patch \
 "
 
 SRC_URI[md5sum] = "ec5fc263f898a3dfef08e805f1ecca42"

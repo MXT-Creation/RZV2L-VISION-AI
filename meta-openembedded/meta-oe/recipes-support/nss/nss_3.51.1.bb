@@ -39,8 +39,12 @@ SRC_URI = "http://ftp.mozilla.org/pub/mozilla.org/security/nss/releases/${VERSIO
            file://CVE-2020-6829_12400.patch \
            file://CVE-2020-12403_1.patch \
            file://CVE-2020-12403_2.patch \
+           file://CVE-2020-25648.patch \
            file://CVE-2021-43527.patch \
            file://CVE-2022-22747.patch \
+           file://CVE-2023-0767.patch \
+           file://0001-Bug-1812671-build-failure-while-implicitly-casting-S.patch;patchdir=nss \
+           file://0001-Bug-1826650-cmd-ecperf-fix-dangling-pointer-warning-.patch;patchdir=nss \
            "
 
 SRC_URI[md5sum] = "6acaf1ddff69306ae30a908881c6f233"
@@ -291,5 +295,11 @@ RDEPENDS_${PN}-smime = "perl"
 
 BBCLASSEXTEND = "native nativesdk"
 
+CVE_PRODUCT += "network_security_services"
+
 # CVE-2006-5201 affects only Sun Solaris
 CVE_CHECK_WHITELIST += "CVE-2006-5201"
+
+# CVES CVE-2017-11695 CVE-2017-11696 CVE-2017-11697 CVE-2017-11698 only affect
+# the legacy db (libnssdbm), only compiled with --enable-legacy-db.
+CVE_CHECK_WHITELIST += "CVE-2017-11695 CVE-2017-11696 CVE-2017-11697 CVE-2017-11698"

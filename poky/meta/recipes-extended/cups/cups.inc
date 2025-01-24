@@ -14,6 +14,10 @@ SRC_URI = "https://github.com/apple/cups/releases/download/v${PV}/${BP}-source.t
            file://0003-cups_1.4.6.bb-Fix-build-on-ppc64.patch \
            file://0004-cups-fix-multilib-install-file-conflicts.patch\
            file://CVE-2022-26691.patch \
+           file://CVE-2023-32324.patch \
+           file://CVE-2023-34241.patch \
+           file://CVE-2023-32360.patch \
+           file://CVE-2023-4504.patch \
            "
 
 UPSTREAM_CHECK_URI = "https://github.com/apple/cups/releases"

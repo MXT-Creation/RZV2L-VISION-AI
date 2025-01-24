@@ -1,7 +1,7 @@
-COMPATIBLE_MACHINE_append = "(rzv2m|rzv2ma)"
+FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-BRANCH_rzv2m = "v2m/rz-5.10-cip29"
-SRCREV_rzv2m = "1f9621c381b9b809ede3532306d9eb3acca0974c"
-
-BRANCH_rzv2ma = "v2ma/rz-5.10-cip29"
-SRCREV_rzv2ma = "6f914ec736ba254524c47ac4864e933b89ddfcd7"
+SRC_URI_append= " \
+        file://0001-usb-xhci-add-code-to-extend-memory-access-to-over-32.patch \
+        file://0002-net-ethernet-renesas-ravb-add-code-to-access-over-32.patch \
+        file://0003-arm64-boot-dts-renesas-r9a09g011-v2mevk2-enable-ethe.patch \
+"

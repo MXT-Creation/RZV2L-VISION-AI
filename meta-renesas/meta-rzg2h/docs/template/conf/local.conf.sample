@@ -277,6 +277,8 @@ DISTRO_FEATURES_append = " pam"
 # Enable wayland and disable x11
 DISTRO_FEATURES_append = " wayland"
 DISTRO_FEATURES_remove = " x11"
+DISTRO_FEATURES_NATIVESDK_append = " wayland"
+DISTRO_FEATURES_NATIVESDK_remove = " x11"
 
 # Add qt5 demonstration to core-image-qt or not
 #QT_DEMO = "1"
@@ -333,7 +335,23 @@ MACHINE_FEATURES_append = " usb3"
 #  - Partial: Manual add/remove ECC area by u-boot command (Default mode)
 # Example of setting:
 #MACHINE_FEATURES_append = " ecc"
-#ecc_MODE = "Partial"
+#ECC_MODE = "Partial"
 
-DL_DIR = "${TOPDIR}/downloads" 
-BB_NO_NETWORK = "0" 
+# Support WIC images with default wks from WKS_DEFAULT_FILE
+# Reupdate WKS_DEFAULT_FILE if want to support another wks file.
+WKS_SUPPORT ?= "1"
+# Defines additional free disk space created in the image in Kbytes.
+IMAGE_ROOTFS_EXTRA_SPACE = "1048576"
+
+# Generate spdx files
+#INHERIT += "create-spdx"
+
+# Optional variables to generate spdx:
+# - SPDX_PRETTY: Make generated files more human readable (newlines, indentation)
+# - SPDX_ARCHIVE_PACKAGED: Add compressed archives of the files in the generated target packages.
+#SPDX_PRETTY = "1"
+#SPDX_ARCHIVE_PACKAGED = "1"
+
+DL_DIR = "${TOPDIR}/downloads"
+BB_NO_NETWORK = "0"
+

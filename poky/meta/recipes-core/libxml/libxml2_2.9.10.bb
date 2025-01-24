@@ -34,6 +34,16 @@ SRC_URI += "http://www.w3.org/XML/Test/xmlts20080827.tar.gz;subdir=${BP};name=te
            file://CVE-2022-29824.patch \
            file://0001-Port-gentest.py-to-Python-3.patch \
            file://CVE-2016-3709.patch \
+           file://CVE-2022-40303.patch \
+           file://CVE-2022-40304.patch \
+           file://CVE-2023-28484.patch \
+           file://CVE-2023-29469.patch \
+           file://CVE-2023-39615-pre.patch \
+           file://CVE-2023-39615-0001.patch \
+           file://CVE-2023-39615-0002.patch \
+           file://CVE-2021-3516.patch \
+           file://CVE-2023-45322-1.patch \
+           file://CVE-2023-45322-2.patch \
            "
 
 SRC_URI[archive.sha256sum] = "593b7b751dd18c2d6abcd0c4bcb29efc203d0b4373a6df98e3a455ea74ae2813"

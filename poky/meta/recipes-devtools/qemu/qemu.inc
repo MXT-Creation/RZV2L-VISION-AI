@@ -112,7 +112,38 @@ SRC_URI = "https://download.qemu.org/${BPN}-${PV}.tar.xz \
            file://CVE-2022-0216-1.patch \
            file://CVE-2022-0216-2.patch \
            file://CVE-2021-3750.patch \
-	   file://CVE-2021-3638.patch \
+           file://CVE-2021-3638.patch \
+           file://CVE-2021-20196.patch \
+           file://CVE-2021-3507.patch \
+           file://hw-block-nvme-refactor-nvme_addr_read.patch \
+           file://hw-block-nvme-handle-dma-errors.patch \
+           file://CVE-2021-3929.patch \
+           file://CVE-2022-4144.patch \
+           file://CVE-2020-15859.patch \
+           file://CVE-2020-15469-1.patch \
+           file://CVE-2020-15469-2.patch \
+           file://CVE-2020-15469-3.patch \
+           file://CVE-2020-15469-4.patch \
+           file://CVE-2020-15469-5.patch \
+           file://CVE-2020-15469-6.patch \
+           file://CVE-2020-15469-7.patch \
+           file://CVE-2020-15469-8.patch \
+           file://CVE-2020-35504.patch \
+           file://CVE-2020-35505.patch \
+           file://CVE-2022-26354.patch \
+           file://CVE-2021-3409-1.patch \
+           file://CVE-2021-3409-2.patch \
+           file://CVE-2021-3409-3.patch \
+           file://CVE-2021-3409-4.patch \
+           file://CVE-2021-3409-5.patch \
+           file://hw-display-qxl-Pass-requested-buffer-size-to-qxl_phy.patch \
+           file://CVE-2023-0330.patch \
+           file://CVE-2023-3354.patch \
+	   file://CVE-2023-3180.patch \
+           file://CVE-2020-24165.patch \
+           file://CVE-2023-5088.patch \
+           file://9pfs-local-ignore-O_NOATIME-if-we-don-t-have-permiss.patch \
+           file://CVE-2023-2861.patch \
            "
 UPSTREAM_CHECK_REGEX = "qemu-(?P<pver>\d+(\.\d+)+)\.tar"
 
@@ -132,6 +163,18 @@ CVE_CHECK_WHITELIST += "CVE-2018-18438"
 
 # the issue introduced in v5.1.0-rc0
 CVE_CHECK_WHITELIST += "CVE-2020-27661"
+
+# As per https://nvd.nist.gov/vuln/detail/CVE-2023-0664
+# https://bugzilla.redhat.com/show_bug.cgi?id=2167423
+# this bug related to windows specific.
+CVE_CHECK_WHITELIST += "CVE-2023-0664"
+
+# As per https://bugzilla.redhat.com/show_bug.cgi?id=2203387
+# RHEL specific issue
+CVE_CHECK_WHITELIST += "CVE-2023-2680"
+
+# Affected only `qemu-kvm` shipped with Red Hat Enterprise Linux 8.3 release.
+CVE_CHECK_WHITELIST += "CVE-2021-20295"
 
 COMPATIBLE_HOST_mipsarchn32 = "null"
 COMPATIBLE_HOST_mipsarchn64 = "null"
@@ -277,6 +320,8 @@ PACKAGECONFIG[capstone] = "--enable-capstone,--disable-capstone"
 PACKAGECONFIG[libnfs] = "--enable-libnfs,--disable-libnfs,libnfs"
 PACKAGECONFIG[brlapi] = "--enable-brlapi,--disable-brlapi"
 PACKAGECONFIG[vde] = "--enable-vde,--disable-vde"
+# version 4.2.0 doesn't have an "internal" option for enable-slirp, so use "git" which uses the same configure code path
+PACKAGECONFIG[slirp] = "--enable-slirp=git,--disable-slirp"
 PACKAGECONFIG[rbd] = "--enable-rbd,--disable-rbd"
 PACKAGECONFIG[rdma] = "--enable-rdma,--disable-rdma"
 

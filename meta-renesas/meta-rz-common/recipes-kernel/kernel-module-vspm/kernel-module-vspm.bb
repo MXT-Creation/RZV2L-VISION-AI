@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = " \
 "
 
 inherit module
-require include/rzg2-modules-common.inc
+require include/rz-modules-common.inc
 
 DEPENDS = "linux-renesas"
 PN = "kernel-module-vspm"
@@ -33,6 +33,7 @@ SRC_URI_append_rzg2l = " \
 	file://0011-Fix-error-cannot-detect-NOOUT-in-case-rs_par-NULL.patch \
 	file://0012-vspm_main-Update-isu-clock-enable.patch \
 	file://0013-vspm-isu-Check-addr-of-1st-plane-in-parameter-for-RP.patch \
+	file://0014-ISU-remove-csc-mode-in-struct-isu_csc_t.patch \
 "
 
 S = "${WORKDIR}/git"

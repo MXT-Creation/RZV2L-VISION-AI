@@ -38,3 +38,9 @@ B_class-nativesdk = "${SEPB}/src/qtwaylandscanner"
 BBCLASSEXTEND =+ "native nativesdk"
 
 RPROVIDES_${PN} += " ${PN}-tools "
+
+# Avoid error in do_package_qa due to missing rdepends to graphic libraries
+# Should not use RDEPENDS here because graphic libraries can be provided by different packages
+INSANE_SKIP_${PN}_append = " file-rdeps"
+INSANE_SKIP_${PN}-plugins_append = " file-rdeps"
+INSANE_SKIP_${PN}-examples_append = " file-rdeps"

@@ -16,3 +16,7 @@ SRC_URI += "\
     file://0002-Fix-build-with-icu-6x.-or-newer.patch \
 "
 PROVIDES = " qtwebkit-qmlplugins"
+
+# Avoid error in do_package_qa due to missing rdepends to graphic libraries
+# Should not use RDEPENDS here because graphic libraries can be provided by different packages
+INSANE_SKIP_${PN}_append = " file-rdeps"

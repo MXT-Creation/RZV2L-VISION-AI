@@ -33,7 +33,7 @@ RDEPENDS_${PN}-examples += "${DEP}"
 PACKAGECONFIG_remove = "openssl"
 
 # add necessary packages
-PACKAGECONFIG_append = " sql-sqlite sql-sqlite2 openssl icu accessibility examples"
+PACKAGECONFIG_append = " alsa sql-sqlite sql-sqlite2 openssl icu accessibility examples"
 
 # Select wayland as the default platform abstraction plugin for Qt
 CONF_ADD_X11 = "${@bb.utils.contains('DISTRO_FEATURES', 'x11', ' -qpa xcb -xcb -xcb-xlib -system-xcb -eglfs', '', d)}"
@@ -42,8 +42,6 @@ CONF_ADD_WAYLAND = "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', ' -qpa wa
 PACKAGECONFIG_CONFARGS_append += "\
 	-no-kms \
 	-no-gbm \
-	-no-pulseaudio \
-	-no-alsa \
 	-no-gtkstyle \
 	-no-evdev \
 	-no-kms \
@@ -58,7 +56,11 @@ PACKAGECONFIG_append += " sm linuxfb gles2"
 # nis option is not supported anymore, disable it here
 PACKAGECONFIG[nis] = ""
 
-INSANE_SKIP_qtbase-plugins = " file-rdeps"
+# Avoid error in do_package_qa due to missing rdepends to graphic libraries
+# Should not use RDEPENDS here because graphic libraries can be provided by different packages
+INSANE_SKIP_${PN}-plugins = " file-rdeps"
+INSANE_SKIP_${PN}_append = " file-rdeps"
+INSANE_SKIP_${PN}-examples_append = " file-rdeps"
 
 #Skip QA for patch-fuzz here because main layer meta-qt5 has patch that is not matched with source, also their source too.
 WARN_QA_remove = "patch-fuzz"

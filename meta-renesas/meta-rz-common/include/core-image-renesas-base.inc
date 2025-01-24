@@ -1,5 +1,7 @@
 # Basic packages
 IMAGE_INSTALL_append = " \
+    kernel-image \
+    kernel-devicetree \
     bash \
     v4l-utils \
     v4l2-init \
@@ -9,7 +11,7 @@ IMAGE_INSTALL_append = " \
 
 update_issue() {
     # Set BSP version
-    BSP_VERSION="3.0.4"
+    BSP_VERSION="3.0.6-update2"
 
     # Set SoC and Board info
     case "${MACHINE}" in
@@ -77,6 +79,42 @@ update_issue() {
       BSP_SOC="RZG2E"
       BSP_BOARD="EK874"
       ;;
+    iwg20m-g1m)
+      BSP_SOC="RZG1M"
+      BSP_BOARD="iWave RZ/G1M-PF Development Kit"
+      ;;
+    skrzg1m)
+      BSP_SOC="RZG1M"
+      BSP_BOARD="RZG1M-SK"
+      ;;
+    iwg20m-g1n)
+      BSP_SOC="RZG1N"
+      BSP_BOARD="iWave RZ/G1N-PF Development Kit"
+      ;;
+    iwg21m)
+      BSP_SOC="RZG1H"
+      BSP_BOARD="iWave RZ/G1H-PF Development Kit"
+      ;;
+    iwg22m)
+      BSP_SOC="RZG1E"
+      BSP_BOARD="iWave RZ/G1E-PF Development Kit"
+      ;;
+    skrzg1e)
+      BSP_SOC="RZG1E"
+      BSP_BOARD="RZG1E-SK"
+      ;;
+    iwg23s)
+      BSP_SOC="RZG1C"
+      BSP_BOARD="iWave RZ/G1C-PF Development Kit"
+      ;;
+    rzg3s-dev)
+      BSP_SOC="RZG3S"
+      BSP_BOARD="RZG3S-DEV"
+      ;;
+    smarc-rzg3s)
+      BSP_SOC="RZG3S"
+      BSP_BOARD="RZG3S-SMARC-EVK"
+      ;;
 
     esac
 
@@ -91,15 +129,6 @@ ROOTFS_POSTPROCESS_COMMAND += "update_issue; "
 BASIC_32BIT_PKGS = " \
     lib32-coreutils \
     lib32-libstdc++ \
-"
-
-# Support secure environment
-IMAGE_INSTALL_append = " \
-    optee-client \
-"
-
-BASIC_32BIT_PKGS_append_rzg2h = " \
-    lib32-optee-client \
 "
 
 # Installation for 32bit packages
@@ -125,7 +154,30 @@ IMAGE_INSTALL_append = " \
     packagegroup-docker \
 "
 
+# Remove since RZG1 don't support LTTNG
+IMAGE_INSTALL_remove_rzg1 = " \
+  lttng-tools \
+  lttng-modules \
+  lttng-ust \
+"
+
+EXTRA_IMAGE_FEATURES += " \
+	package-management \
+	ssh-server-dropbear \
+"
+
 # Environment setup, support building kernel modules with kernel src in SDK
 export KERNELSRC="$SDKTARGETSYSROOT/usr/src/kernel"
 export KERNELDIR="$SDKTARGETSYSROOT/usr/src/kernel"
 export HOST_EXTRACFLAGS="-I${OECORE_NATIVE_SYSROOT}/usr/include/ -L${OECORE_NATIVE_SYSROOT}/usr/lib"
+
+# Default WKS is eMMC, except rzg2l devices which can support eSD boot
+WKS_DEFAULT_FILE = "rz-image-bootpart-mmc.wks"
+WKS_DEFAULT_FILE_rzg2l = "rz-image-bootpart-esd.wks"
+WKS_DEFAULT_FILE_smarc-rzg2l = "rz-image-bootpart-esd-pmic.wks"
+
+WKS_FILE ?= "${@oe.utils.conditional("WKS_SUPPORT", "1", "${WKS_DEFAULT_FILE}", "", d)}"
+
+# Force remake wic image if its inputs were changed (WIC_INPUT_DEPENDS are defined in each machine conf)
+# Note that environment variable WKS_FILE_DEPENDS can be used here, but it makes do_rootfs rerun as well
+do_image_wic[depends] += "${WIC_INPUT_DEPENDS}"

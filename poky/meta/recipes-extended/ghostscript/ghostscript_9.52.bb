@@ -39,6 +39,12 @@ SRC_URI_BASE = "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/d
                 file://CVE-2021-3781_1.patch \
                 file://CVE-2021-3781_2.patch \
                 file://CVE-2021-3781_3.patch \
+                file://CVE-2023-28879.patch \
+                file://0001-Bug-706897-Copy-pcx-buffer-overrun-fix-from-devices-.patch \
+                file://CVE-2023-36664-pre1.patch \
+                file://CVE-2023-36664-1.patch \
+                file://CVE-2023-36664-2.patch \
+                file://CVE-2023-43115.patch \
 "
 
 SRC_URI = "${SRC_URI_BASE} \
