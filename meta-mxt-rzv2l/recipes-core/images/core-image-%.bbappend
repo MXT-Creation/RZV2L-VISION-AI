@@ -4,13 +4,8 @@ IMAGE_FEATURES_append = " ssh-server-openssh"
 IMAGE_INSTALL_append = " \
 	emmc-flash \
 	u-boot-tools \
-	custom-configs \
 	kernel-image \
 	kernel-devicetree \
 	htop \
-	iperf3 \
 	da16600 \
-	app-usbcam-http \
-	app-usbcam-client \
-	ustreamer \
 "
