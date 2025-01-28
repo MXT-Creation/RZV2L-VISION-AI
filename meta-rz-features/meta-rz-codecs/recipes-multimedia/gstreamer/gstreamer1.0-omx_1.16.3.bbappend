@@ -4,7 +4,7 @@ SRC_URI_remove = "https://gstreamer.freedesktop.org/src/gst-omx/gst-omx-${PV}.ta
 
 SRC_URI_append = " \
     git://github.com/renesas-rcar/gst-omx.git;branch=RCAR-GEN3e/1.16.3;name=base \
-    git://anongit.freedesktop.org/gstreamer/common;destsuffix=git/common;name=common \
+    git://gitlab.freedesktop.org/gstreamer/common;destsuffix=git/common;name=common \
     file://0002-Fix-error-Resolution-do-not-match-in-running-case-fi.patch \
     file://0004-gst-pipeline-cannot-corectly-decode-with-vspmfilter-.patch \
 "
