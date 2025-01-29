@@ -9,6 +9,8 @@ inherit systemd
 SRC_URI = "file://connman_main.conf \
 	file://mxt-camera-init.sh \
 	file://mxt-camera-init.service \
+	file://gstreamer_rtp_mpegts.sh \
+	file://gstreamer_rtp_raw.sh \
 "
 
 do_install() {
@@ -20,6 +22,10 @@ do_install() {
 
 	install -m 0755 -d ${D}${systemd_unitdir}/system
 	install -m 0744 ${WORKDIR}/mxt-camera-init.service ${D}${systemd_unitdir}/system/
+
+	install -m 0755 -d ${D}/home/root
+	install -m 0744 ${WORKDIR}/gstreamer_rtp_mpegts.sh ${D}/home/root
+	install -m 0744 ${WORKDIR}/gstreamer_rtp_raw.sh ${D}/home/root
 }
 
 SYSTEMD_AUTO_ENABLE = "enable"
@@ -29,4 +35,5 @@ FILES_${PN} = " \
 	${systemd_unitdir}/* \
 	/usr/bin/* \
 	/etc/* \
+	/home/root/* \
 "
