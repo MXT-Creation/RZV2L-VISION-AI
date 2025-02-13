@@ -1,0 +1,118 @@
+From ee97a344e814f0a089fd462c6dd7a42db6e28281 Mon Sep 17 00:00:00 2001
+From: Alexandru Ardelean <alex@shruggie.ro>
+Date: Thu, 13 Feb 2025 18:26:14 +0200
+Subject: [PATCH] media: i2c: imx274: patch-in functional mode for 1920x1080 on
+ RZV2L
+
+The register set is required for this to work.
+Then making HMAX 520 (from 260).
+
+From userspace, cropping will be set as '[crop:(960,540)/1920x1080]'
+
+Signed-off-by: Alexandru Ardelean <alex@shruggie.ro>
+---
+ drivers/media/i2c/imx274.c | 62 ++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 60 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/i2c/imx274.c b/drivers/media/i2c/imx274.c
+index c4c6f5c4f..ffd7cf4ef 100644
+--- a/drivers/media/i2c/imx274.c
++++ b/drivers/media/i2c/imx274.c
+@@ -242,6 +242,40 @@ static const struct reg_8 imx274_mode1_3840x2160_raw10[] = {
+ 	{0x306B, 0x05},
+ 	{0x30E2, 0x01},
+ 
++	{0x300E, 0x00}, // [7:0] SVR[7:0]	00
++	{0x300F, 0x00}, // [7:0] SVR[15:8]	00
++	{0x3019, 0x10}, // [7:0] DOLMODE	10
++	{0x301A, 0x00}, // [7:0] MDVREV	0: Norm 1: Inv
++	{0x3032, 0x08}, // [7:0] RHS1[7:0]	08
++	{0x3033, 0x00}, // [7:0] RHS1[15:8]	00
++	{0x3037, 0x01}, // [0]   HTRIMMING_EN	1
++	{0x3038, 0xCC}, // [7:0] HTRIMMNG_START[7:0]	CC
++	{0x3039, 0x03}, // [4:0] HTRIMMNG_START[12:8]	03
++	{0x303A, 0x4C}, // [7:0] HTRIMMING_END[7:0]	4C
++	{0x303B, 0x0B}, // [4:0] HTRIMMING_END[12:8]	0B
++	{0x3041, 0x30}, // [7:0] DOLSET1	30
++	{0x3042, 0x08}, // [7:0] HCYCLE[7:0]	08
++	{0x3043, 0x01}, // [5:0] HCYCLE[13:8]	01
++	{0x306B, 0x05}, // [7:0] MDPLS17	05
++	{0x30DD, 0x01}, // [0]   VWIDCUTEN	1
++	{0x30DE, 0x22}, // [7:0] VWIDCUT[7:0]	22
++	{0x30DF, 0x02}, // [2:0] VWIDCUT[10:8]	2
++	{0x30E0, 0x11}, // [7:0] VWINPOS	normal 111/ inverted EEF
++	{0x30E1, 0x01}, // [3:0]
++	{0x30E2, 0x01}, // [7:0] VCUTMODE	01
++	{0x30E9, 0x00}, // [7:0] DOLSET2	00
++	{0x30EE, 0x01}, // [7:0] PSMOVEN	1
++	{0x30F6, 0xE8}, // [7:0] HMAX[7:0]	E8
++	{0x30F7, 0x03}, // [7:0] HMAX[15:8]	03
++	{0x30F8, 0x60}, // [7:0] VMAX[7:0]	60
++	{0x30F9, 0x09}, // [7:0] VMAX[15:8]	09
++	{0x30FA, 0x00}, // [3:0] VMAX[19:16]	0
++	{0x3130, 0x40}, // [7:0] WRITE_VSIZE[7:0]	40
++	{0x3131, 0x04}, // [4:0] WRITE_VSIZE[12:8]	04
++	{0x3132, 0x38}, // [7:0] Y_OUT_SIZE[7:0]	38
++	{0x3133, 0x04}, // [4:0] Y_OUT_SIZE[12:8]	04
++
++
+ 	{0x30EE, 0x01},
+ 	{0x3342, 0x0A},
+ 	{0x3343, 0x00},
+@@ -395,12 +429,14 @@ static const struct reg_8 imx274_start_1[] = {
+ 	{IMX274_STANDBY_REG, 0x12},
+ 
+ 	/* PLRD: clock settings */
+-	{0x3120, 0xF0},
++	{0x3120, 0xC0},
+ 	{0x3121, 0x00},
+ 	{0x3122, 0x02},
++	{0x3123, 0x01},
+ 	{0x3129, 0x9C},
+ 	{0x312A, 0x02},
+ 	{0x312D, 0x02},
++	{0x3AC4, 0x01},
+ 
+ 	{0x310B, 0x00},
+ 
+@@ -441,6 +477,28 @@ static const struct reg_8 imx274_start_1[] = {
+ 	{0x3686, 0x32},
+ 	{0x3687, 0x00},
+ 
++	/* DataRate - 576 MBps per lane */
++	{ 0x3134, 0x5F },
++	{ 0x3135, 0x00 },
++	{ 0x3136, 0x4F },
++	{ 0x3137, 0x00 },
++	{ 0x3138, 0x27 },
++	{ 0x3139, 0x00 },
++	{ 0x313A, 0x27 },
++	{ 0x313B, 0x00 },
++	{ 0x313C, 0x27 },
++	{ 0x313D, 0x00 },
++	{ 0x313E, 0x97 },
++	{ 0x313F, 0x00 },
++	{ 0x3140, 0x27 },
++	{ 0x3141, 0x00 },
++	{ 0x3142, 0x1F },
++	{ 0x3143, 0x00 },
++	{ 0x3144, 0x0F },
++	{ 0x3145, 0x00 },
++	{ 0x3A86, 0x47 },
++	{ 0x3A87, 0x00 },
++
+ 	{IMX274_TABLE_END, 0x00}
+ };
+ 
+@@ -1325,7 +1383,7 @@ static int imx274_apply_trimming(struct stimx274 *imx274)
+ 	/* Use the minimum allowed value of HMAX */
+ 	/* Note: except in mode 1, (width / 16 + 23) is always < hmax_min */
+ 	/* Note: 260 is the minimum HMAX in all implemented modes */
+-	hmax = max_t(u32, 260, (imx274->crop.width) / 16 + 23);
++	hmax = max_t(u32, 260 * 2, (imx274->crop.width) / 16 + 23); // FIXME: minimum HMAX seems to be 520 on RZV2L
+ 
+ 	/* invert v_pos if VFLIP */
+ 	v_pos = imx274->ctrls.vflip->cur.val ?
+-- 
+2.43.0
+
