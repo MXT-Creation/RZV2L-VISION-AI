@@ -1,0 +1,149 @@
+From b887dfc7e7ed7be06853001ac6d0b226c32987d9 Mon Sep 17 00:00:00 2001
+From: Alexandru Ardelean <alex@shruggie.ro>
+Date: Fri, 14 Feb 2025 15:34:39 +0200
+Subject: [PATCH] media: i2c: imx377:  patch-in functional mode for 1920x1080
+ on RZV2L
+
+Signed-off-by: Alexandru Ardelean <alex@shruggie.ro>
+---
+ drivers/media/i2c/imx377.c | 74 +++++++++++++++++++++++++++-----------
+ 1 file changed, 54 insertions(+), 20 deletions(-)
+
+diff --git a/drivers/media/i2c/imx377.c b/drivers/media/i2c/imx377.c
+index 58a777d7f..e1ff2799d 100644
+--- a/drivers/media/i2c/imx377.c
++++ b/drivers/media/i2c/imx377.c
+@@ -105,6 +105,7 @@
+ /* default output clk frequency for camera */
+ #define IMX377_DEFAULT_CLK_FREQ			24000000
+ 
++// Note: the dimension here are currently inaccurate
+ #define IMX377_PIXEL_ARRAY_WIDTH		3912 /* HNUM is 3912 in datasheet */
+ #define IMX377_PIXEL_ARRAY_HEIGHT		2174
+ 
+@@ -336,17 +337,41 @@ static const struct imx377_reg imx377_init_table[] = {
+ 	/* Roughly adapted from 'Standby Cancel Sequence' */
+ 
+ 	/* Step 1 - Standby Cancel Sequence - Input Frequency Setting, input clock 24Mhz */
+-	{ IMX377_REG_8BIT(0x3120), 0xf0 }, /* PLRD1 */
++	{ IMX377_REG_8BIT(0x3120), 0xC0 }, /* PLRD1 */
+ 	{ IMX377_REG_8BIT(0x3121), 0x00 }, /* PLRD1 */
+ 	{ IMX377_REG_8BIT(0x3129), 0x90 }, /* PLRD2 */ 
+ 	{ IMX377_REG_8BIT(0x3122), 0x02 }, /* PLRD3 */
+ 	{ IMX377_REG_8BIT(0x312A), 0x02 }, /* PLRD4 */
+-	{ IMX377_REG_8BIT(0x3123), 0x00 }, /* PLRD10 */
++	{ IMX377_REG_8BIT(0x3123), 0x01 }, /* PLRD10 */
+ 	{ IMX377_REG_8BIT(0x3124), 0x00 }, /* PLRD11 */
+ 	{ IMX377_REG_8BIT(0x3125), 0x01 }, /* PLRD12 */
+ 	{ IMX377_REG_8BIT(0x3127), 0x02 }, /* PLRD13 */
+ 	{ IMX377_REG_8BIT(0x312D), 0x02 }, /* PLRD14 */
+ 
++	{ IMX377_REG_8BIT(0x303D), 0x03 }, /* SYS_MODE */
++	{ IMX377_REG_8BIT(0x3AC4), 0x01 }, /* MIPI_HALF_EN */
++
++	{ IMX377_REG_8BIT(0x3133), 0x5F }, // tclk_post	005Fh	5Fh
++	{ IMX377_REG_8BIT(0x3134), 0x00 },
++	{ IMX377_REG_8BIT(0x3135), 0x47 }, // ths_zero_min	0047h	47h
++	{ IMX377_REG_8BIT(0x3136), 0x00 },
++	{ IMX377_REG_8BIT(0x3137), 0x27 }, // ths_prepare	0027h	27h
++	{ IMX377_REG_8BIT(0x3138), 0x00 },
++	{ IMX377_REG_8BIT(0x3139), 0x27 }, // tclk_trail_min	0027h	27h
++	{ IMX377_REG_8BIT(0x313A), 0x00 },
++	{ IMX377_REG_8BIT(0x313B), 0x27 }, // ths_trail	0027h	27h
++	{ IMX377_REG_8BIT(0x313C), 0x00 },
++	{ IMX377_REG_8BIT(0x313D), 0x97 }, // tclk_zero	0097h	97h
++	{ IMX377_REG_8BIT(0x313E), 0x00 },
++	{ IMX377_REG_8BIT(0x313F), 0x27 }, // tclk_prepare	0027h	27h
++	{ IMX377_REG_8BIT(0x3140), 0x00 },
++	{ IMX377_REG_8BIT(0x3141), 0x1F }, // tlpx	001Fh	1Fh
++	{ IMX377_REG_8BIT(0x3142), 0x00 },
++	{ IMX377_REG_8BIT(0x3143), 0x0F }, // tclk_pre	000Fh	0Fh
++	{ IMX377_REG_8BIT(0x3144), 0x00 },
++	{ IMX377_REG_8BIT(0x3A86), 0x47 }, // ths_exit	0047h	47h
++	{ IMX377_REG_8BIT(0x3A87), 0x00 },
++
+ 	/* Sony magic registers - set as the datahseet suggests */
+ 	{ IMX377_REG_8BIT(0x3003), 0x20 },
+ 	{ IMX377_REG_8BIT(0x304E), 0x02 },
+@@ -523,11 +548,11 @@ static const struct imx377_reg imx377_readout_mode1[] = {
+ 	{ IMX377_REG_8BIT(0x300D), 0x00 }, /* SVR */
+ 	{ IMX377_REG_8BIT(0x300E), 0x00 }, /* SVR */
+ 	{ IMX377_REG_8BIT(0x301A), 0x00 }, /* MDVREV - VFLIP */
+-	{ IMX377_REG_8BIT(0x3039), 0x00 }, /* HTRIMMING_END */
+-	{ IMX377_REG_8BIT(0x303A), 0x00 }, /* HTRIMMING_END */
+-	{ IMX377_REG_8BIT(0x303E), 0x00 }, /* HTRIMMING_START */
+-	{ IMX377_REG_8BIT(0x303F), 0x00 }, /* HTRIMMING_START */
+-	{ IMX377_REG_8BIT(0x3040), 0x00 }, /* HTRIMMING_EN */
++	{ IMX377_REG_8BIT(0x3039), 0x64 }, /* HTRIMMING_END */
++	{ IMX377_REG_8BIT(0x303A), 0x0B }, /* HTRIMMING_END */
++	{ IMX377_REG_8BIT(0x303E), 0x14 }, /* HTRIMMING_START */
++	{ IMX377_REG_8BIT(0x303F), 0x04 }, /* HTRIMMING_START */
++	{ IMX377_REG_8BIT(0x3040), 0x01 }, /* HTRIMMING_EN */
+ 	{ IMX377_REG_8BIT(0x3068), 0x00 }, /* MDSEL7 */
+ 	{ IMX377_REG_8BIT(0x307E), 0x00 }, /* MDSEL5 */
+ 	{ IMX377_REG_8BIT(0x307F), 0x08 }, /* MDSEL5 */
+@@ -566,22 +591,22 @@ static const struct imx377_reg imx377_readout_mode1[] = {
+ 	{ IMX377_REG_8BIT(0x30CC), 0x00 }, /* MDPLS48 */
+ 	{ IMX377_REG_8BIT(0x30D0), 0x48 }, /* MDPLS52 */
+ 	{ IMX377_REG_8BIT(0x30D1), 0x0F }, /* MDPLS52 */
+-	{ IMX377_REG_8BIT(0x30D5), 0x00 }, /* VWIDCUTEN */
+-	{ IMX377_REG_8BIT(0x30D6), 0x00 }, /* VWIDCUT */
+-	{ IMX377_REG_8BIT(0x30D7), 0x00 }, /* VWIDCUT */
+-	{ IMX377_REG_8BIT(0x30D8), 0x00 }, /* VWINPOS */
+-	{ IMX377_REG_8BIT(0x30D9), 0x00 }, /* VWINPOS */
++	{ IMX377_REG_8BIT(0x30D5), 0x01 }, /* VWIDCUTEN */
++	{ IMX377_REG_8BIT(0x30D6), 0x26 }, /* VWIDCUT */
++	{ IMX377_REG_8BIT(0x30D7), 0x02 }, /* VWIDCUT */
++	{ IMX377_REG_8BIT(0x30D8), 0x13 }, /* VWINPOS */
++	{ IMX377_REG_8BIT(0x30D9), 0x01 }, /* VWINPOS */
+ 	{ IMX377_REG_8BIT(0x30DA), 0x00 }, /* MDREG01 */
+ 	{ IMX377_REG_8BIT(0x30EE), 0x01 }, /* MDREG02 */
+-	{ IMX377_REG_8BIT(0x30F5), 0x71 }, /* HMAX */
+-	{ IMX377_REG_8BIT(0x30F6), 0x02 }, /* HMAX */
+-	{ IMX377_REG_8BIT(0x30F7), 0xAC }, /* VMAX */
+-	{ IMX377_REG_8BIT(0x30F8), 0x08 }, /* VMAX */
++	{ IMX377_REG_8BIT(0x30F5), 0xE0 }, /* HMAX */
++	{ IMX377_REG_8BIT(0x30F6), 0x05 }, /* HMAX */
++	{ IMX377_REG_8BIT(0x30F7), 0x1D }, /* VMAX */
++	{ IMX377_REG_8BIT(0x30F8), 0x06 }, /* VMAX */
+ 	{ IMX377_REG_8BIT(0x30F9), 0x00 }, /* VMAX */
+-	{ IMX377_REG_8BIT(0x312F), 0x86 }, /* MDSEL9 */
+-	{ IMX377_REG_8BIT(0x3130), 0x08 }, /* MDSEL9 */
+-	{ IMX377_REG_8BIT(0x3131), 0x7E }, /* MDSEL10 */
+-	{ IMX377_REG_8BIT(0x3132), 0x08 }, /* MDSEL10 */
++	{ IMX377_REG_8BIT(0x312F), 0x40 }, /* MDSEL9 */
++	{ IMX377_REG_8BIT(0x3130), 0x04 }, /* MDSEL9 */
++	{ IMX377_REG_8BIT(0x3131), 0x38 }, /* MDSEL10 */
++	{ IMX377_REG_8BIT(0x3132), 0x04 }, /* MDSEL10 */
+ 	{ IMX377_REG_8BIT(0x3A41), 0x08 }, /* MDSEL11 */
+ 
+ 	{ IMX377_TABLE_END, 0 }
+@@ -797,9 +822,12 @@ static int imx377_setup(struct imx377 *sensor)
+ 	if (ret)
+ 		return ret;
+ 
++	// Disable trimming; imx377_readout_mode1 is hard-coded at 1920x1080; don't do cropping
++#if 0
+ 	ret = imx377_apply_trimming(sensor);
+ 	if (ret)
+ 		return ret;
++#endif
+ 
+ 	if (sensor->lane_conf_regs) {
+ 		ret = imx377_write_array(sensor, sensor->lane_conf_regs);
+@@ -822,6 +850,12 @@ static int imx377_stream_on(struct imx377 *sensor)
+ 	ret |= imx377_write(sensor, IMX377_XMSTA, IMX377_XMSTA_MASTRE_MODE_START);
+ 	if (ret)
+ 		return ret;
++
++	/* Continuous clock mode */
++	ret |= imx377_write(sensor, IMX377_REG_8BIT(0x3A43), 0);
++	if (ret)
++		return ret;
++
+ 	usleep_range(50000, 70000);
+ 
+ 	return imx377_write(sensor, IMX377_CTRL00, IMX377_CTRL00_NORMAL_OPERATION);
+-- 
+2.43.0
+

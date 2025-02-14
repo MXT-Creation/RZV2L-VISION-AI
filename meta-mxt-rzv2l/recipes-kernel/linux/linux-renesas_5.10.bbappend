@@ -75,6 +75,7 @@ SRC_URI_append +=  "\
 	file://patches/2019-media-i2c-imx415-implement-simple-cropping.patch \
 	file://patches/2020-media-i2c-imx415-implement-2x2-binning.patch \
 	file://patches/2021-media-i2c-imx377-add-support-for-Sony-IMX377.patch \
+	file://patches/2022-media-i2c-imx377-patch-in-functional-mode-for-1920x1.patch \
 "
 
 do_compile_prepend() {
