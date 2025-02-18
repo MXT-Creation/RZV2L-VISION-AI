@@ -34,6 +34,8 @@ SET(SOURCES
 	plugins/camera/jpeg.c
 	plugins/camera/protocol.c
 	plugins/drpai/drpai.c
+	plugins/drpai/model_hrnet.c
+	plugins/drpai/model_resnet50.c
 	plugins/drpai/model_yolo.c
 	plugins/drpai/models.c
 	plugins/drpai/protocol.c
