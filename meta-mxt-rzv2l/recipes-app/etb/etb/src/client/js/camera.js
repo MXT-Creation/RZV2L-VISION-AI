@@ -1,19 +1,21 @@
+let predictionData = {
+	type: null,
+	data: null
+};
 
-let predictionData = null; // FIXME hack
 let predictionImage = null; // FIXME hack
 
-object_colors = [ 'orange', 'magenta', 'red', 'yellow', 'green', 'blue' ];
+object_colors = ['orange', 'magenta', 'red', 'yellow', 'green', 'blue'];
 object_color_idx = 0;
 object_color_map = new Map();
 
-function camera_device_play_toggle_button(ws, buttonElement)
-{
+function camera_device_play_toggle_button(ws, buttonElement) {
 	var sel = document.getElementById("camera_device_sel");
 	var play = (buttonElement.value == "Play");
 
 	const msg_json = {
-		"name" : play ? "camera-device-play" : "camera-device-stop",
-		"value" : { "device": sel.value },
+		"name": play ? "camera-device-play" : "camera-device-stop",
+		"value": { "device": sel.value },
 	};
 
 	sel.disabled = play;
@@ -24,25 +26,21 @@ function camera_device_play_toggle_button(ws, buttonElement)
 	buttonElement.value = play ? "Stop" : "Play";
 }
 
-function camera_device_play_toggle(ws, ev)
-{
+function camera_device_play_toggle(ws, ev) {
 	camera_device_play_toggle_button(ws, ev.currentTarget);
 }
 
-function camera_device_selection_change(ev)
-{
+function camera_device_selection_change(ev) {
 	var play = document.getElementById("camera_device_play");
 	play.disabled = (ev.currentTarget.value == "");
 }
 
-function camera_devices_get_request(ws)
-{
-	const msg_json = { "name" : "camera-devices-get" };
+function camera_devices_get_request(ws) {
+	const msg_json = { "name": "camera-devices-get" };
 	ws.send(JSON.stringify(msg_json));
 }
 
-function camera_devices_get_response(ws, msg)
-{
+function camera_devices_get_response(ws, msg) {
 	var sel = document.getElementById("camera_device_sel");
 	var play = document.getElementById("camera_device_play");
 
@@ -53,7 +51,7 @@ function camera_devices_get_response(ws, msg)
 		return;
 	}
 
-	var devices = [ "<option value='' selected>Select camera device...</option>" ];
+	var devices = ["<option value='' selected>Select camera device...</option>"];
 	for (let dev of msg) {
 		devices.push(`<option value="${dev.device}">${dev.card}</option>`);
 	}
@@ -63,7 +61,7 @@ function camera_devices_get_response(ws, msg)
 	sel.addEventListener('change', camera_device_selection_change);
 
 	// Register event listener when the play button gets pushed
-	play.addEventListener('click', function(ev) {
+	play.addEventListener('click', function (ev) {
 		camera_device_play_toggle(ws, ev);
 	});
 
@@ -73,8 +71,7 @@ function camera_devices_get_response(ws, msg)
 }
 
 // adapted from: https://github.com/oatpp/example-yuv-websocket-stream/blob/master/res/cam/wsImageView.html
-function yuv2CanvasImageData(canvas, data)
-{
+function yuv2CanvasImageData(canvas, data) {
 	let msg_array = new Uint8ClampedArray(data);
 
 	if (msg_array.length == 0)
@@ -84,45 +81,66 @@ function yuv2CanvasImageData(canvas, data)
 	let imgData = context.createImageData(640, 480);
 	let i, j;
 
-	for (i = 0, j = 0, g = 0; i < imgData.data.length && j < msg_array.length; i += 8, j += 4, g+= 2) {
-		const y1 = msg_array[j  ];
-		const u  = msg_array[j+1];
-		const y2 = msg_array[j+2];
-		const v  = msg_array[j+3];
+	for (i = 0, j = 0, g = 0; i < imgData.data.length && j < msg_array.length; i += 8, j += 4, g += 2) {
+		const y1 = msg_array[j];
+		const u = msg_array[j + 1];
+		const y2 = msg_array[j + 2];
+		const v = msg_array[j + 3];
 
-		imgData.data[i    ] = Math.min(255, Math.max(0, Math.floor(y1+1.4075*(v-128))));
-		imgData.data[i + 1] = Math.min(255, Math.max(0, Math.floor(y1-0.3455*(u-128)-(0.7169*(v-128)))));
-		imgData.data[i + 2] = Math.min(255, Math.max(0, Math.floor(y1+1.7790*(u-128))));
+		imgData.data[i] = Math.min(255, Math.max(0, Math.floor(y1 + 1.4075 * (v - 128))));
+		imgData.data[i + 1] = Math.min(255, Math.max(0, Math.floor(y1 - 0.3455 * (u - 128) - (0.7169 * (v - 128)))));
+		imgData.data[i + 2] = Math.min(255, Math.max(0, Math.floor(y1 + 1.7790 * (u - 128))));
 		imgData.data[i + 3] = 255;
-		imgData.data[i + 4] = Math.min(255, Math.max(0, Math.floor(y2+1.4075*(v-128))));
-		imgData.data[i + 5] = Math.min(255, Math.max(0, Math.floor(y2-0.3455*(u-128)-(0.7169*(v-128)))));
-		imgData.data[i + 6] = Math.min(255, Math.max(0, Math.floor(y2+1.7790*(u-128))));
+		imgData.data[i + 4] = Math.min(255, Math.max(0, Math.floor(y2 + 1.4075 * (v - 128))));
+		imgData.data[i + 5] = Math.min(255, Math.max(0, Math.floor(y2 - 0.3455 * (u - 128) - (0.7169 * (v - 128)))));
+		imgData.data[i + 6] = Math.min(255, Math.max(0, Math.floor(y2 + 1.7790 * (u - 128))));
 		imgData.data[i + 7] = 255;
 	}
 	context.putImageData(imgData, 0, 0);
 }
 
 // FIXME: hack to do this quickly
-function drpai_handle_object_detection_result(ws, msg)
-{
+function drpai_handle_object_detection_result(ws, msg) {
 	if (!Array.isArray(msg) || msg.length == 0) {
-		predictionData = null;
+		predictionData = { type: null, data: null };
 		return;
 	}
 
-	predictionData = msg; // FIXME hack
+	predictionData = {
+		type: 'object-detection',
+		data: msg
+	};
 }
 
-function connect_camera_socket()
-{
+function drpai_handle_pose_estimation_result(ws, msg) {
+	predictionData.type = 'pose-estimation';
+
+	if (!Array.isArray(msg) || msg.length === 0) {
+		predictionData.data = [];
+	} else {
+		predictionData.data = msg
+	}
+}
+
+function drpai_handle_classification_result(ws, msg) {
+	predictionData = {
+		type: 'classification',
+		data: msg
+	};
+}
+
+function connect_camera_socket() {
 	let startTime = null;
 	let updateElapsedTimeCounter = 0;
 	const elapsedTimeFormat = { hour: "numeric", minute: "numeric", second: "numeric" };
+
 
 	const callbacks = {
 		"camera-devices-get": camera_devices_get_response,
 		// FIXME: hack to do this quickly
 		"drpai-object-detection-result": drpai_handle_object_detection_result,
+		"drpai-pose-estimation-result": drpai_handle_pose_estimation_result,
+		"drpai-classification-result": drpai_handle_classification_result,
 	};
 
 	function update_elapsed_time() {
@@ -143,8 +161,8 @@ function connect_camera_socket()
 		let hours = Math.floor(elapsedTotal / 60);                   // hours
 		let elem = document.getElementById("camera_elapsed_time");
 		elem.innerHTML = hours.toString().padStart(2, '0') + ":" +
-				 minutes.toString().padStart(2, '0') + ":" +
-				 seconds.toString().padStart(2, '0');
+			minutes.toString().padStart(2, '0') + ":" +
+			seconds.toString().padStart(2, '0');
 	}
 
 	function handle_binary_response(msg) {
@@ -179,25 +197,109 @@ function connect_camera_socket()
 			contextDrpAi.drawImage(imgElemDrpAi, 0, 0, 640, 480);
 
 			if (predictionData) {
-				let data = predictionData;
-				for (i = 0; i < data.length; i++) {
-					let label = data[i].label;
-					let box = data[i].box;
-					let used_color = object_color_map.get(label);
-					if (used_color === undefined) {
-						used_color = 'blue';
-						if (object_color_idx < object_colors.length) {
-							used_color = object_colors[object_color_idx];
-							object_color_map.set(label, used_color);
-							object_color_idx++;
+				switch (predictionData.type) {
+					case 'object-detection':
+						if (predictionData.data.length === 0)
+							break;
+						// Draw object detection boxes
+						predictionData.data.forEach(obj => {
+							let used_color = object_color_map.get(obj.label);
+							if (used_color === undefined) {
+								used_color = 'blue';
+								if (object_color_idx < object_colors.length) {
+									used_color = object_colors[object_color_idx];
+									object_color_map.set(obj.label, used_color);
+									object_color_idx++;
+								}
+							}
+							contextDrpAi.strokeStyle = used_color;
+							contextDrpAi.fillStyle = used_color;
+							contextDrpAi.lineWidth = 8;
+							contextDrpAi.strokeRect(obj.box.x, obj.box.y, obj.box.w, obj.box.h);
+							contextDrpAi.font = "bold 20px sans-serif"
+							contextDrpAi.fillText(obj.label, (obj.box.x + 8), (obj.box.y + 16));
+						});
+						break;
+
+					case 'pose-estimation':
+						// Draw pose estimation skeleton
+						contextDrpAi.lineWidth = 2;
+						contextDrpAi.strokeStyle = 'yellow';
+						contextDrpAi.fillStyle = 'yellow';
+						contextDrpAi.font = "bold 24px sans-serif"
+
+						const ratio_w = canvas.width / 640;
+						const ratio_h = canvas.height / 480;
+
+						// Draw inference area
+						contextDrpAi.strokeRect(185 * ratio_w, 0, 270 * ratio_w, 480 * ratio_h);
+						contextDrpAi.fillText("Please stand here", (185 + 5) * ratio_w, (480 - 5) * ratio_h);
+
+						if (predictionData.data.length < 17) break;
+
+						// Draw skeleton with ratio adjustment
+						const connections = [
+							// Head to shoulders triangle 
+							[0, 1],  // Head -> Left Shoulder
+							[1, 2],  // Left Shoulder -> Right Shoulder
+							[2, 0],  // Right Shoulder -> Head
+							// Arms 
+							[1, 3],  // Left Shoulder -> Left Elbow
+							[2, 4],  // Right Shoulder -> Right Elbow
+							[3, 5],  // Left Elbow -> Left Wrist
+							[4, 6],  // Right Elbow -> Right Wrist
+							[5, 6],  // Left Wrist -> Right Wrist
+							// Torso connections 
+							[5, 7],  // Left Wrist -> Left Hip
+							[6, 8],  // Right Wrist -> Right Hip
+							[7, 9],  // Left Hip -> Left Knee
+							[8, 10], // Right Hip -> Right Knee
+							// Lower body 
+							[5, 11], // Left Wrist -> Left Ankle
+							[6, 12], // Right Wrist -> Right Ankle
+							[11, 12], // Left Ankle -> Right Ankle
+							[11, 13], // Left Ankle -> Left Foot
+							[12, 14], // Right Ankle -> Right Foot
+							[13, 15], // Left Foot -> Left Toe
+							[14, 16]  // Right Foot -> Right Toe
+						];
+
+						connections.forEach(([i, j]) => {
+							let p1 = predictionData.data[i];
+							let p2 = predictionData.data[j];
+							if (p1 && p2 && p1.probability > 0.3 && p2.probability > 0.3) {
+								contextDrpAi.beginPath();
+								contextDrpAi.moveTo(p1.x * ratio_w, p1.y * ratio_h);
+								contextDrpAi.lineTo(p2.x * ratio_w, p2.y * ratio_h);
+								contextDrpAi.stroke();
+							}
+						});
+
+						// Draw keypoints
+						predictionData.data.forEach((point, i) => {
+							if (point.probability > 0.3) {
+								contextDrpAi.beginPath();
+								contextDrpAi.arc(
+									point.x * ratio_w,
+									point.y * ratio_h,
+									4,
+									0,
+									2 * Math.PI
+								);
+								contextDrpAi.fill();
+							}
+						});
+						break;
+
+					case 'classification':
+						for (let i = 0; i < predictionData.data.length; i++) {
+							let textSize = 24;
+							contextDrpAi.fillStyle = 'red';
+							contextDrpAi.font = `bold ${textSize}px sans-serif`
+							// 1.25 line height
+							contextDrpAi.fillText(predictionData.data[i].label, 10, 20 + textSize * 1.25 * i);
 						}
-					}
-					contextDrpAi.strokeStyle = used_color;
-					contextDrpAi.fillStyle = used_color;
-					contextDrpAi.lineWidth = 8;
-					contextDrpAi.strokeRect(box.x, box.y, box.w, box.h);
-					contextDrpAi.font = "bold 20px sans-serif"
-					contextDrpAi.fillText(label, (box.x + 8), (box.y + 16));
+						break;
 				}
 			}
 		}
@@ -216,9 +318,9 @@ function connect_camera_socket()
 	}
 
 	let ws = new_ws("camera");
-        ws.binaryType = "arraybuffer";
+	ws.binaryType = "arraybuffer";
 	try {
-		ws.onopen = function() {
+		ws.onopen = function () {
 			camera_devices_get_request(ws);
 		};
 
@@ -230,7 +332,7 @@ function connect_camera_socket()
 			}
 		};
 
-		ws.onclose = function(){
+		ws.onclose = function () {
 		};
 
 	} catch (exception) {

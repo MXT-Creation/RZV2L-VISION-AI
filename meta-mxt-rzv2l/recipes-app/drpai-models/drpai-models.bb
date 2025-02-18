@@ -13,7 +13,9 @@ LIC_FILES_CHKSUM = " \
 
 SRC_URI = "file://licenses/ \
 	   file://hrnet_cam.tar.bz2 \
+	   file://hrnet_cam.json \
 	   file://resnet50_cam.tar.bz2 \
+	   file://resnet50_cam.json \
 	   file://tinyyolov2_cam.tar.bz2 \
 	   file://tinyyolov2_cam.json \
 	   file://yolov3_cam.tar.bz2 \
