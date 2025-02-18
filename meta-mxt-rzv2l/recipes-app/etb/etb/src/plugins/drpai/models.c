@@ -13,8 +13,10 @@ struct model_type_to_ops_map {
 
 /* These are common/reference models */
 static const struct model_type_to_ops_map model_type_to_ops_map[] = {
-	{ "yolov2",		&yolo_model_ops },
-	{ "yolov3",		&yolo_model_ops },
+	{ "yolov2",		&yolo_model_ops		},
+	{ "yolov3",		&yolo_model_ops		},
+	{ "hrnet", 		&hrnet_model_ops	},
+	{ "resnet50",	&resnet50_model_ops	},
 	{ /* sentinel */ }
 };
 

@@ -16,6 +16,8 @@ char **drpai_load_labels_from_file(const char *model, const char *fname, int *re
 json_object *drpai_model_types_get();
 
 #ifdef MODELS_PRIVATE_DATA
+extern const struct drpai_model_ops hrnet_model_ops;
+extern const struct drpai_model_ops resnet50_model_ops;
 extern const struct drpai_model_ops yolo_model_ops;
 #endif
 
