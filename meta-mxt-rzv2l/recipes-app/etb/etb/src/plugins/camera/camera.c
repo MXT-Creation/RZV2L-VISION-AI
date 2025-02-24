@@ -1,4 +1,3 @@
-
 #include "camera.h"
 
 #include <errno.h>
@@ -22,6 +21,9 @@ struct camera_entry {
 	char dev_name[DEV_NAME_MAX_SIZE];
 	struct camera_buffer buffers[NUM_MAX_CAPTURE_BUFS];
 	int fd;
+	int width;
+	int height;
+	char needs_resize;
 };
 
 /* FIXME: add mutex when adding threads */
@@ -36,19 +38,36 @@ static int xioctl(int fd, int request, void* arg)
 	return r;
 }
 
-static int camera_set_capture_parameters(int fd)
+static int camera_set_capture_parameters(struct camera_entry* cam)
 {
 	struct v4l2_streamparm setfps = {};
 	struct v4l2_format fmt = {};
+	
+	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+	if (xioctl(cam->fd, VIDIOC_G_FMT, &fmt) < 0) {
+		lwsl_err("ioctl(VIDIOC_G_FMT): %s\n", strerror(errno));
+		return -1;
+	}
+
+	if (fmt.fmt.pix.pixelformat != V4L2_PIX_FMT_YUYV) {
+		lwsl_err("Unsupported pixel format: %d\n", fmt.fmt.pix.pixelformat);
+		return -1;
+	}
 
 	/* FIXME: hard-coded for now */
-	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	fmt.fmt.pix.width = 640;
-	fmt.fmt.pix.height = 480;
-	fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+	if (fmt.fmt.pix.width != 640 || fmt.fmt.pix.height != 480) {
+		lwsl_info("Camera resolution %dx%d will be resized to 640x480\n", 
+			fmt.fmt.pix.width, fmt.fmt.pix.height);
+
+		cam->needs_resize = 1;
+		cam->width = fmt.fmt.pix.width;
+		cam->height = fmt.fmt.pix.height;
+	}
+
 	fmt.fmt.pix.field = V4L2_FIELD_NONE;
 
-	if (xioctl(fd, VIDIOC_S_FMT, &fmt) < 0) {
+	if (xioctl(cam->fd, VIDIOC_S_FMT, &fmt) < 0) {
 		lwsl_err("ioctl(VIDIOC_S_FMT): %s\n", strerror(errno));
 		return -1;
 	}
@@ -57,7 +76,7 @@ static int camera_set_capture_parameters(int fd)
 	setfps.parm.capture.timeperframe.numerator = 1;
 	setfps.parm.capture.timeperframe.denominator = 30;
 
-	if (xioctl(fd, VIDIOC_S_PARM, &setfps) < 0) {
+	if (xioctl(cam->fd, VIDIOC_S_PARM, &setfps) < 0) {
 		lwsl_warn("ioctl(VIDIOC_S_PARM): %s\n", strerror(errno));
 		return 0;
 	}
@@ -255,7 +274,7 @@ int camera_dev_play_start(json_object *req)
 		goto err_cam_inactive;
 	}
 
-	if (camera_set_capture_parameters(cam->fd) < 0) {
+	if (camera_set_capture_parameters(cam) < 0) {
 		err = "error configuring camera parameters";
 		goto err_close_fd;
 	}
@@ -373,6 +392,22 @@ int camera_dev_acquire_capture_buffer(int cam_id, struct camera_buffer *buf)
 		return -1;
 
 	memcpy(buf, &cam->buffers[buf_id], sizeof(*buf));
+
+	if (cam->needs_resize) {
+		unsigned char *resized_output = (unsigned char *) malloc(640 * 480 * 2);
+		
+		if (!resized_output) {
+			lwsl_err("Failed to allocate memory for resized buffer\n");
+			return -1;
+		}
+
+		resize_frame((unsigned char *)buf->ptr, resized_output, cam->width, cam->height, 640, 480);
+
+		memcpy(buf->ptr, resized_output, 640 * 480 * 2);
+		buf->length = 640 * 480 * 2;
+
+		free(resized_output);
+	}
 
 	return 0;
 }
