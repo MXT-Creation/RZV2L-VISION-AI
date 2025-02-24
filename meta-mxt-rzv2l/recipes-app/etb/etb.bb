@@ -12,7 +12,7 @@ SRC_URI = "file://src/ \
 
 S = "${WORKDIR}/src"
 
-DEPENDS += " drpai libjpeg-turbo libwebsockets json-c "
+DEPENDS += " drpai libjpeg-turbo libwebsockets json-c opencv "
 RDEPENDS_${PN} += " drpai-models "
 
 SYSTEMD_AUTO_ENABLE = "enable"
