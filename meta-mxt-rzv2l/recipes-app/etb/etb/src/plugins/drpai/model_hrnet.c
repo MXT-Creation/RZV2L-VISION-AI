@@ -117,6 +117,7 @@ static int hrnet_postprocessing(void *model_params, float *data, int width, int 
 
         json_object_object_add(jobj, "x", json_object_new_int(posx));
         json_object_object_add(jobj, "y", json_object_new_int(posy));
+        json_object_object_add(jobj, "probability", json_object_new_double(hrnet_preds[b][2]));
         json_object_array_add(arr, jobj);
     }
 
