@@ -14,9 +14,11 @@
 #include <stdbool.h>
 
 #include <sys/mman.h>
+#include <time.h>
 
 #include "drpai.h"
 #include "models.h"
+#include "../telemetry/proc_time.h"
 
 #define min(a, b) ((a) > (b) ? (b) : (a))
 
@@ -25,6 +27,11 @@
 #endif
 
 #define ADDRMAP_INTM_TXT_FILTER	"addrmap_intm.txt"
+
+static struct timespec g_inference_start_time;
+static struct timespec g_post_proc_start_time;
+static double g_last_inference_time = 0;
+static double g_last_post_proc_time = 0;
 
 struct drpai_param_map {
 	const char *key;   /* key in the ADDRMAP_INTM_TXT file*/
@@ -47,6 +54,28 @@ struct drpai {
 		void *usrptr;
 	} udmabuf;
 };
+
+static double timedifference_msec(struct timespec t0, struct timespec t1)
+{
+    return (t1.tv_sec - t0.tv_sec) * 1000.0 + (t1.tv_nsec - t0.tv_nsec) / 1000000.0;
+}
+
+static void save_proc_time(double inference_time, double post_proc_time)
+{
+    proc_time_data_t data;
+    data.inference_time = inference_time;
+    data.post_proc_time = post_proc_time;
+    data.timestamp = time(NULL);
+    
+    int fd = open(PROC_TIME_FILE, O_WRONLY | O_CREAT, 0644);
+    if (fd >= 0) {
+        ssize_t bytes_written = write(fd, &data, sizeof(data));
+        if (bytes_written != sizeof(data)) {
+            lwsl_warn("Failed to write complete proc_time data\n");
+        }
+        close(fd);
+    }
+}
 
 static const struct drpai_param_map drpai_param_map[] = {
 	{ "drp_config", DRPAI_INDEX_DRP_CFG,    "drpcfg.mem" },
@@ -537,6 +566,8 @@ const char *drpai_model_start(struct drpai *d)
 		return "DRP AI object not initialized";
 	}
 
+	clock_gettime(CLOCK_MONOTONIC, &g_inference_start_time);
+
 	rc = drpai_start(d);
 	if (rc) {
 		lwsl_warn("%s %d err %s\n", __func__, __LINE__, strerror(-rc));
@@ -551,6 +582,10 @@ const char *drpai_model_get_result(struct drpai *d, json_object* result)
 	const struct drpai_model_ops *ops;
 	float *raw = NULL;
 	int rc = 0;
+	struct timespec inference_end_time;
+
+	clock_gettime(CLOCK_MONOTONIC, &inference_end_time);
+	g_last_inference_time = timedifference_msec(g_inference_start_time, inference_end_time);
 
 	/* Yep, a bit weird to run DRP AI and not do any post-processing */
 	ops = d->model.ops;
@@ -562,8 +597,17 @@ const char *drpai_model_get_result(struct drpai *d, json_object* result)
 		return "DRP AI error retrieving result";
 	}
 
+	clock_gettime(CLOCK_MONOTONIC, &g_post_proc_start_time);
+
 	/* FIXME: find a neat way to pass width, height */
 	rc = ops->postprocessing(d->model.priv, raw, 640, 480, result);
+	
+	struct timespec post_proc_end_time;
+	clock_gettime(CLOCK_MONOTONIC, &post_proc_end_time);
+	g_last_post_proc_time = timedifference_msec(g_post_proc_start_time, post_proc_end_time);
+	
+	save_proc_time(g_last_inference_time, g_last_post_proc_time);
+	
 	free(raw);
 	if (rc) {
 		return "DRP AI post-processing error";

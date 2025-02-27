@@ -1,5 +1,3 @@
-
-
 function get_appropriate_ws_url(extra_url)
 {
 	var pcol;
@@ -40,44 +38,9 @@ function load_js_script(url) {
 const js_scripts = [
 	"camera.js",
 	"drpai.js",
+	"telemetry.js",
 ];
 
 js_scripts.forEach(load_js_script);
-
-let graphCtx = document.getElementById('graph_canvas').getContext('2d');
-
-let graphChart = new Chart(graphCtx, {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [
-      {
-        label: 'CPU 0 Usage[%]',
-        data: [],
-        borderColor: 'blue',
-        backgroundColor: 'rgba(0,0,0,0)'
-      },
-      {
-        label: 'CPU 1 Usage[%]',
-        data: [],
-        borderColor: 'deepskyblue',
-        backgroundColor: 'rgba(0,0,0,0)'
-      }
-    ],
-  },
-  options: {
-    scales: {
-      y: {
-        type: 'linear',
-        min: 0,
-        max: 100
-      }
-    },
-    animation: {
-      duration: 0
-    }
-  }
-}
-);
 
 

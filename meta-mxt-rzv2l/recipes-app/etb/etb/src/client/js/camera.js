@@ -101,6 +101,9 @@ function yuv2CanvasImageData(canvas, data) {
 
 // FIXME: hack to do this quickly
 function drpai_handle_object_detection_result(ws, msg) {
+	let predWindowDisplay = document.getElementById('pred_window');
+	predWindowDisplay.value = "";
+
 	if (!Array.isArray(msg) || msg.length == 0) {
 		predictionData = { type: null, data: null };
 		return;
@@ -110,9 +113,19 @@ function drpai_handle_object_detection_result(ws, msg) {
 		type: 'object-detection',
 		data: msg
 	};
+
+	let predText = "";
+
+	msg.forEach(obj => {
+		predText += `${obj.label} (${obj.probability.toFixed(2)}%) at (${obj.box.x}, ${obj.box.y} - ${obj.box.w}x${obj.box.h})\n`;
+	});
+	predWindowDisplay.value = predText;
 }
 
 function drpai_handle_pose_estimation_result(ws, msg) {
+	let predWindowDisplay = document.getElementById('pred_window');
+	predWindowDisplay.value = "";
+
 	predictionData.type = 'pose-estimation';
 
 	if (!Array.isArray(msg) || msg.length === 0) {
@@ -120,13 +133,28 @@ function drpai_handle_pose_estimation_result(ws, msg) {
 	} else {
 		predictionData.data = msg
 	}
+
+	let predText = "";
+	msg.forEach((obj,i) => {
+		predText += `No${i+1} (${obj.probability.toFixed(2)}%) at (${obj.x}, ${obj.y})\n`;
+	});
+	predWindowDisplay.value = predText;
 }
 
 function drpai_handle_classification_result(ws, msg) {
+	let predWindowDisplay = document.getElementById('pred_window');
+	predWindowDisplay.value = "";
+
 	predictionData = {
 		type: 'classification',
 		data: msg
 	};
+
+	let predText = "";
+	msg.forEach((obj,i) => {
+		predText += `${obj.label} (${obj.probability.toFixed(2)}%)\n`;
+	});
+	predWindowDisplay.value = predText;
 }
 
 function connect_camera_socket() {

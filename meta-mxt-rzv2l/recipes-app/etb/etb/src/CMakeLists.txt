@@ -40,6 +40,9 @@ SET(SOURCES
 	plugins/drpai/model_yolo.c
 	plugins/drpai/models.c
 	plugins/drpai/protocol.c
+	plugins/telemetry/cpu.c
+	plugins/telemetry/proc_time.c
+	plugins/telemetry/protocol.c
 	main.c ws_server.c)
 
 ADD_EXECUTABLE(etb ${SOURCES})
