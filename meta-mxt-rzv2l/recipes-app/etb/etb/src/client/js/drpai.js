@@ -1,3 +1,10 @@
+let savedModel = localStorage.getItem("drpaiModel") ?? "";
+let savedModelPlayState = localStorage.getItem("drpaiModelPlayState") === "true";
+
+function saveModelState() {
+	localStorage.setItem("drpaiModel", savedModel);
+	localStorage.setItem("drpaiModelPlayState", savedModelPlayState);
+}
 
 function drpai_model_start_toggle(ws, ev)
 {
@@ -15,12 +22,19 @@ function drpai_model_start_toggle(ws, ev)
 
 	// FIXME: bind this to server response
 	ev.currentTarget.value = play ? "Stop" : "Start";
+
+	// Save state to localStorage
+	savedModelPlayState = play;
+	saveModelState();
 }
 
 function drpai_model_selection_change(ev)
 {
 	var start = document.getElementById("drpai_model_start");
 	start.disabled = (ev.currentTarget.value == "");
+
+	savedModel = ev.currentTarget.value;
+	saveModelState();
 }
 
 function drpai_models_get_request(ws) {
@@ -52,6 +66,20 @@ function drpai_models_populate_model_names(ws, msg)
 	start.addEventListener('click', function(ev) {
 		drpai_model_start_toggle(ws, ev);
 	});
+
+	// Restore state from localStorage
+	if (savedModel) {
+		sel.value = savedModel;
+		sel.dispatchEvent(new Event('change'));
+	}
+
+	if (savedModelPlayState) {
+		start.value = savedModelPlayState ? "Start" : "Stop";
+		start.disabled = false;
+
+		let ev = { currentTarget: start };
+		drpai_model_start_toggle(ws, ev);
+	}
 }
 
 function drpai_models_get_response(ws, msg)
