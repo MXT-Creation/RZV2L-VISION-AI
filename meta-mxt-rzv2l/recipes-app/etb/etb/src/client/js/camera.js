@@ -5,9 +5,17 @@ let predictionData = {
 
 let predictionImage = null; // FIXME hack
 
+let savedDevice = localStorage.getItem("cameraDevice") ?? "";
+let savedPlayState = localStorage.getItem("cameraPlayState") === "true" ?? false;
+
 object_colors = ['orange', 'magenta', 'red', 'yellow', 'green', 'blue'];
 object_color_idx = 0;
 object_color_map = new Map();
+
+function saveState() {
+	localStorage.setItem("cameraDevice", savedDevice);
+	localStorage.setItem("cameraPlayState", savedPlayState);
+}
 
 function camera_device_play_toggle_button(ws, buttonElement) {
 	var sel = document.getElementById("camera_device_sel");
@@ -24,6 +32,10 @@ function camera_device_play_toggle_button(ws, buttonElement) {
 
 	// FIXME: bind this to server response
 	buttonElement.value = play ? "Stop" : "Play";
+
+	// Save state to localStorage
+	savedPlayState = play;
+	saveState();
 }
 
 function camera_device_play_toggle(ws, ev) {
@@ -33,6 +45,9 @@ function camera_device_play_toggle(ws, ev) {
 function camera_device_selection_change(ev) {
 	var play = document.getElementById("camera_device_play");
 	play.disabled = (ev.currentTarget.value == "");
+
+	savedDevice = ev.currentTarget.selectedIndex;
+	saveState();
 }
 
 function camera_devices_get_request(ws) {
@@ -65,7 +80,8 @@ function camera_devices_get_response(ws, msg) {
 		camera_device_play_toggle(ws, ev);
 	});
 
-	sel.selectedIndex = 1;
+	sel.selectedIndex = savedDevice;
+	play.value = savedPlayState ? "Play" : "Stop";
 	camera_device_play_toggle_button(ws, play);
 	play.disabled = false;
 }
@@ -135,8 +151,8 @@ function drpai_handle_pose_estimation_result(ws, msg) {
 	}
 
 	let predText = "";
-	msg.forEach((obj,i) => {
-		predText += `No${i+1} (${obj.probability.toFixed(2)}%) at (${obj.x}, ${obj.y})\n`;
+	msg.forEach((obj, i) => {
+		predText += `No${i + 1} (${obj.probability.toFixed(2)}%) at (${obj.x}, ${obj.y})\n`;
 	});
 	predWindowDisplay.value = predText;
 }
@@ -151,7 +167,7 @@ function drpai_handle_classification_result(ws, msg) {
 	};
 
 	let predText = "";
-	msg.forEach((obj,i) => {
+	msg.forEach((obj, i) => {
 		predText += `${obj.label} (${obj.probability.toFixed(2)}%)\n`;
 	});
 	predWindowDisplay.value = predText;
