@@ -212,16 +212,19 @@ function connect_camera_socket() {
 
 		imgElemCamera.width = 640;
 		imgElemCamera.height = 480;
+		imgElemCamera.onload = () => {
+			contextCamera.drawImage(imgElemCamera, 0, 0, 640, 480);
+		};
 		imgElemCamera.src = "data:image/jpeg;base64," + base64Image;
 
-		contextCamera.drawImage(imgElemCamera, 0, 0, 640, 480);
 		if (predictionImage) {
+			canvas = document.getElementById("drpai_canvas");
+			let contextDrpAi = canvas.getContext("2d");
+
 			imgElemDrpAi.width = 640;
 			imgElemDrpAi.height = 480;
 			imgElemDrpAi.src = "data:image/jpeg;base64," + predictionImage;
 
-			canvas = document.getElementById("drpai_canvas");
-			let contextDrpAi = canvas.getContext("2d");
 			contextDrpAi.drawImage(imgElemDrpAi, 0, 0, 640, 480);
 
 			if (predictionData) {
