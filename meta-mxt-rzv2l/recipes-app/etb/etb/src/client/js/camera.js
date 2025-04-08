@@ -32,6 +32,10 @@ function camera_device_play_toggle_button(ws, buttonElement) {
 
 	// FIXME: bind this to server response
 	buttonElement.value = play ? "Stop" : "Play";
+	
+	if (play) {
+		camera_controls_get_request(ws, sel.value);
+	}
 
 	// Save state to localStorage
 	savedPlayState = play;
@@ -173,6 +177,145 @@ function drpai_handle_classification_result(ws, msg) {
 	predWindowDisplay.value = predText;
 }
 
+let cameraControls = [];
+
+function camera_controls_get_request(ws, device) {
+	if (!device) return;
+	
+	const msg_json = {
+		"name": "camera-control-get",
+		"value": { "device": device }
+	};
+	ws.send(JSON.stringify(msg_json));
+}
+
+// Function to set a camera control value
+function camera_control_set_request(ws, device, controlId, value) {
+	if (!device) return;
+	
+	const msg_json = {
+		"name": "camera-control-set",
+		"value": {
+			"device": device,
+			"control": {
+				"id": controlId,
+				"value": value
+			}
+		}
+	};
+	
+	try {
+		ws.send(JSON.stringify(msg_json));
+	} catch (e) {
+		// Silent error handling in production
+	}
+}
+
+// Handle control value changes from UI
+function handle_control_change(ws, device, controlId, value) {
+	camera_control_set_request(ws, device, controlId, parseInt(value));
+}
+
+// Handle response from camera-controls-get
+function camera_control_get_response(ws, msg) {
+	const controlsContainer = document.getElementById('camera_controls');
+	const device = document.getElementById("camera_device_sel").value;
+	
+	// Clear existing controls
+	controlsContainer.innerHTML = '';
+	cameraControls = msg || [];
+	
+	if (!Array.isArray(msg) || msg.length === 0) {
+		controlsContainer.innerHTML = '<p>No controls available for this camera</p>';
+		return;
+	}
+	
+	// Create UI elements for each control
+	msg.forEach(control => {
+		// Skip controls with invalid flags
+		if (control.flags & 0x0001) { // V4L2_CTRL_FLAG_DISABLED
+			return
+		}
+		
+		if (control.type === 6) {
+			const categoryHeader = document.createElement('div');
+			categoryHeader.className = 'control-category';
+			categoryHeader.textContent = control.name;
+			controlsContainer.appendChild(categoryHeader);
+			return;
+		}
+		
+		const controlItem = document.createElement('div');
+		controlItem.className = 'control-item';
+		
+		const controlLabel = document.createElement('label');
+		controlLabel.textContent = control.name;
+		controlItem.appendChild(controlLabel);
+		
+		if (control.type === 1 || control.type === 5) { // V4L2_CTRL_TYPE_INTEGER or V4L2_CTRL_TYPE_INTEGER64
+			// Create a slider for integer controls
+			const slider = document.createElement('input');
+			slider.type = 'range';
+			slider.min = control.minimum;
+			slider.max = control.maximum;
+			slider.step = control.step;
+			slider.value = control.current_value;
+			
+			const valueDisplay = document.createElement('span');
+			valueDisplay.textContent = control.current_value;
+			valueDisplay.style.minWidth = '40px';
+			valueDisplay.style.textAlign = 'right';
+			
+			slider.addEventListener('input', function() {
+				valueDisplay.textContent = slider.value;
+			});
+			
+			slider.addEventListener('change', function() {
+				handle_control_change(ws, device, control.id, parseInt(slider.value));
+			});
+			
+			controlItem.appendChild(slider);
+			controlItem.appendChild(valueDisplay);
+		} 
+		else if (control.type === 2) { // V4L2_CTRL_TYPE_BOOLEAN
+			// Create a checkbox for boolean controls
+			const checkbox = document.createElement('input');
+			checkbox.type = 'checkbox';
+			checkbox.checked = control.current_value === 1;
+			
+			checkbox.addEventListener('change', function() {
+				handle_control_change(ws, device, control.id, checkbox.checked ? 1 : 0);
+			});
+			
+			controlItem.appendChild(checkbox);
+		}
+		else if (control.type === 3 && control.menu) { // V4L2_CTRL_TYPE_MENU
+			// Create a dropdown for menu controls
+			const select = document.createElement('select');
+			
+			control.menu.forEach(item => {
+				const option = document.createElement('option');
+				option.value = item.index;
+				option.textContent = item.name;
+				option.selected = item.index === control.current_value;
+				select.appendChild(option);
+			});
+			
+			select.addEventListener('change', function() {
+				handle_control_change(ws, device, control.id, parseInt(select.value));
+			});
+			
+			controlItem.appendChild(select);
+		}
+		
+		controlsContainer.appendChild(controlItem);
+	});
+}
+
+function camera_control_set_response(ws, msg) {
+	// Used for debugging previously	
+}
+
 function connect_camera_socket() {
 	let startTime = null;
 	let updateElapsedTimeCounter = 0;
@@ -181,6 +324,8 @@ function connect_camera_socket() {
 
 	const callbacks = {
 		"camera-devices-get": camera_devices_get_response,
+		"camera-control-get": camera_control_get_response,
+		"camera-control-set": camera_control_set_response,
 		// FIXME: hack to do this quickly
 		"drpai-object-detection-result": drpai_handle_object_detection_result,
 		"drpai-pose-estimation-result": drpai_handle_pose_estimation_result,
@@ -364,27 +509,71 @@ function connect_camera_socket() {
 		cb(ws, Object.hasOwn(msg, "value") ? msg.value : null);
 	}
 
-	let ws = new_ws("camera");
-	ws.binaryType = "arraybuffer";
-	try {
-		ws.onopen = function () {
-			camera_devices_get_request(ws);
-		};
+	let reconnectAttempts = 0;
+	const MAX_RECONNECT_ATTEMPTS = 5;
+	const RECONNECT_DELAY = 2000; // 2 seconds
+	
+	function setupWebSocket() {
+		let ws = new_ws("camera");
+		ws.binaryType = "arraybuffer";
+		
+		try {
+			ws.onopen = function () {
+				reconnectAttempts = 0;
+				camera_devices_get_request(ws);
+			};
 
-		ws.onmessage = function got_packet(msg) {
-			if (msg.data instanceof ArrayBuffer) {
-				handle_binary_response2(msg);
-			} else {
-				handle_json_response(msg);
-			}
-		};
+			ws.onmessage = function got_packet(msg) {
+				try {
+					if (msg.data instanceof ArrayBuffer) {
+						handle_binary_response2(msg);
+					} else {
+						handle_json_response(msg);
+					}
+				} catch (e) {
+				}
+			};
 
-		ws.onclose = function () {
-		};
-
-	} catch (exception) {
-
+			ws.onclose = function (event) {
+				// Attempt reconnection if it wasn't a normal closure
+				document.getElementById('camera_controls').innerHTML = '<p>No camera device...</p>';
+				
+				// Attempt reconnection if it wasn't a normal closure
+				if (event.code !== 1000 && event.code !== 1001) {
+					if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+						reconnectAttempts++;
+						setTimeout(setupWebSocket, RECONNECT_DELAY);
+					}
+				}
+			};
+			
+			ws.onerror = function(error) {
+			};
+			
+			return ws;
+			
+		} catch (exception) {
+			return null;
+		}
 	}
+	
+	let ws = setupWebSocket();
+	
+	// If initial connection fails, retry
+	if (!ws && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+		reconnectAttempts++;
+		setTimeout(setupWebSocket, RECONNECT_DELAY);
+	}
+}
+
+// Initialize toggle button functionality
+const toggleButton = document.getElementById('toggle-controls');
+const controlsPanel = document.getElementById('camera_controls_panel');
+
+if (toggleButton && controlsPanel) {
+    toggleButton.addEventListener('click', function() {
+        controlsPanel.classList.toggle('hidden');
+    });
 }
 
 connect_camera_socket();

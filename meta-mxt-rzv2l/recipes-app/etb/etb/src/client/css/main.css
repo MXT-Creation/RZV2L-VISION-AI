@@ -1,55 +1,155 @@
-
-body{
-	font-family: sans-serif;
-	text-align: center;
-	padding: 5px;
-	margin: 0px;
-	height: 100%;
+body {
+    font-family: sans-serif;
+    text-align: center;
+    padding: 5px;
+    margin: 0;
 }
 
-p {
-	font-weight: bold;
-	font-size: 18px;
-	margin-bottom: 6px;
+/* Layout */
+.canvas-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
-#table_stats {
-	width: 100%;
-	height: 100%;
+.canvas-wrapper {
+    position: relative;
+    max-width: 640px;
+    flex: 1;
 }
 
-#app_table {
-	display: flex;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
-}
-
-#app_table tr {
-	height: 100%;
-}
-
-#app_table td {
-	height: 100%;
-}
-
-textarea {
-	width: 90%;
-	height: 80%;
-	overflow: scroll;
-}
-
-.row{
-	margin-bottom: 10px;
-}
-
+/* Canvas styles */
 .movie_canvas {
-	background-color: darkgray;
+    background-color: darkgray;
+    width: 100%;
+    max-width: 640px;
+    max-height: 480px;
+}
+
+.graph_canvas {
+    width: 100%;
+    max-width: 640px;
+}
+
+#pred_window, #drp_window {
+	min-height: 270px;
+}
+
+/* Camera controls overlay - positioned at bottom */
+.camera-controls-overlay {
+    position: absolute;
+    z-index: 10;
+    width: 100%;
+}
+
+.bottom-controls {
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+/* Camera and model controls styling */
+.camera-basic-controls, .model-controls {
+    display: flex;
+    gap: 5px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.7);
+    align-items: center;
+}
+
+.toggle-button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    padding: 0 5px;
+    cursor: pointer;
 }
 
 .now_time {
-	font-weight: bold;
-	font-size: 18px;
-	margin-left: 12px;
+    margin-left: auto;
+    color: white;
+    font-weight: bold;
+}
+
+/* Controls panel - now appears above the controls */
+.controls-panel {
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    color: white;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.controls-panel.hidden {
+    display: none;
+}
+
+/* Bottom section */
+.bottom-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.graph-container, .stats-container {
+    flex: 1;
+    max-width: 640px;
+}
+
+#table_stats {
+    width: 100%;
+}
+
+textarea {
+    width: 90%;
+    height: 80%;
+}
+
+/* Camera controls styling */
+.controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    text-align: left;
+}
+
+.control-item label {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.control-item input[type="range"] {
+    flex: 1;
+}
+
+.control-category {
+    color: #4dabf7;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .canvas-container, .bottom-container {
+        flex-direction: column;
+        align-items: center;
+    }
 }
 

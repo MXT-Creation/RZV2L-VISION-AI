@@ -8,48 +8,40 @@
   </head>
 
   <body>
-    <table id="app_table">
-    <tr>
-      <td>
-        <div class="movie">
-          <canvas id="camera_canvas" class="movie_canvas" width="640" height="480"></canvas>
+    <div class="canvas-container">
+      <div class="canvas-wrapper">
+        <canvas id="camera_canvas" class="movie_canvas" width="640" height="480"></canvas>
+        <div class="camera-controls-overlay bottom-controls">
+          <div class="camera-basic-controls">
+            <select name="camera_device_sel" id="camera_device_sel">
+              <option value="" hidden>No camera device...</option>
+            </select>
+            <input id="camera_device_play" name="camera_device_play" type="button" value="Play" disabled />
+            <span id="camera_elapsed_time" class="now_time">00:00:00</span>
+            <button id="toggle-controls" class="toggle-button">⚙️</button>
+          </div>
+          
+          <div id="camera_controls_panel" class="controls-panel hidden">
+            <div id="camera_controls" class="controls-container"></div>
+          </div>
         </div>
-      </td>
-      <td>
-        <div class="movie">
-          <canvas id="drpai_canvas" class="movie_canvas" width="640" height="480"></canvas>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="drpai_canvas" class="movie_canvas" width="640" height="480"></canvas>
+        <div class="model-controls bottom-controls">
+          <select name="drpai_model_sel" id="drpai_model_sel">
+            <option value="" hidden>No models available...</option>
+          </select>
+          <input id="drpai_model_start" name="drpai_model_start" type="button" value="Start" disabled />
         </div>
-      </td>
-    </tr>
+      </div>
+    </div>
 
-    <tr>
-      <td>
-      <label>Current Camera Device
-        <select name="camera_device_sel" id="camera_device_sel">
-          <option value="" hidden>No camera device...</option>
-        </select>
-      </label>
-      <input id="camera_device_play" name="camera_device_play" type="button" value="Play" disabled />
-      <span id="camera_elapsed_time" class="now_time">00:00:00</span>
-      </td>
-
-      <td>
-      <label>Current Model
-        <select name="drpai_model_sel" id="drpai_model_sel">
-          <option value="" hidden>No models available...</option>
-        </select>
-      </label>
-      <input id="drpai_model_start" name="drpai_model_start" type="button" value="Start" disabled />
-      </td>
-    </tr>
-
-    <tr>
-      <td>
-        <div class="graph">
-          <canvas id="graph_canvas" class="graph_canvas" width="640" height="320"></canvas>
-        </div>
-      </td>
-      <td>
+    <div class="bottom-container">
+      <div class="graph-container">
+        <canvas id="graph_canvas" class="graph_canvas" width="640" height="320"></canvas>
+      </div>
+      <div class="stats-container">
         <table id="table_stats">
           <tr>
             <td>
@@ -62,9 +54,8 @@
             </td>
           </tr>
         </table>
-      </td>
-    </tr>
-    </table>
+      </div>
+    </div>
 
     <script src="libs/jquery-3.4.1.min.js"></script>
     <script src="libs/Chart.min.js"></script>
