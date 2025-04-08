@@ -19,6 +19,8 @@ enum command {
 	CMD_DEVICES_GET = 0,
 	CMD_DEVICE_PLAY,
 	CMD_DEVICE_STOP,
+	CMD_CONTROL_GET,
+	CMD_CONTROL_SET,
 	CMD_MAX,
 };
 
@@ -26,6 +28,8 @@ static const char *command_names[] = {
 	[CMD_DEVICES_GET] = "camera-devices-get",
 	[CMD_DEVICE_PLAY] = "camera-device-play",
 	[CMD_DEVICE_STOP] = "camera-device-stop",
+	[CMD_CONTROL_GET] = "camera-control-get",
+	[CMD_CONTROL_SET] = "camera-control-set",
 };
 
 struct msg {
@@ -90,7 +94,7 @@ static int queue_json_message(struct lws *wsi, struct per_session_data__camera *
 	ret = lws_ring_insert(pss->ring, &amsg, 1);
 
 	if (!ret) {
-		lwsl_warn(" (could insert message in ring)\n");
+		lwsl_warn(" (could not insert message in ring)\n");
 		return -1;
 	}
 
@@ -166,6 +170,14 @@ static int protocol_handle_incoming(struct lws *wsi, struct per_session_data__ca
 			camera_dev_play_stop_req(req);
 			pss->cam_id = -1;
 			break;
+		case CMD_CONTROL_GET:
+			send_req_back_as_reply = true;
+			camera_dev_get_control(req);
+			break;
+		case CMD_CONTROL_SET:
+			send_req_back_as_reply = true;
+			camera_dev_set_control(req);
+			break;
 		default:
 			break;
 	}
@@ -194,20 +206,44 @@ static int handle_outgoing_message(struct lws *wsi, struct per_session_data__cam
 	struct msg *pmsg;
 	int w;
 
+	if (!pss || !pss->ring) {
+		lwsl_err("Invalid session data for websocket write\n");
+		return -1;
+	}
+
 	pmsg = (struct msg*)lws_ring_get_element(pss->ring, &pss->tail);
 	if (!pmsg) {
 		lwsl_debug(" (nothing in ring)\n");
 		return -1;
 	}
 
+	if (!pmsg->send_buf || pmsg->send_buf_len <= 0) {
+		lwsl_err("Invalid message buffer: %p, length: %d\n", 
+			pmsg->send_buf, pmsg->send_buf_len);
+		lws_ring_consume_single_tail(pss->ring, &pss->tail, 1);
+		return -1;
+	}
+
 	w = lws_write(wsi, pmsg->send_buf + LWS_PRE, pmsg->send_buf_len, pmsg->flags);
 	if (w < pmsg->send_buf_len) {
-		lwsl_err("ERROR %d writing json to ws socket %d\n", w, pmsg->send_buf_len);
+		int written_pct = (w > 0) ? (w * 100 / pmsg->send_buf_len) : 0;
+		
+		if (w < 0) {
+			// Socket has an error
+			lwsl_err("Socket write failed completely: %d\n", w);
+		} else {
+			// Partial write occurred
+			lwsl_err("ERROR %d writing json to ws socket (written %d%% of %d bytes)\n", 
+				w, written_pct, pmsg->send_buf_len);
+		}
+		
+		// Always consume the message even on error to avoid queue buildup
+		lws_ring_consume_single_tail(pss->ring, &pss->tail, 1);
+
 		return -1;
 	}
 
 	lws_ring_consume_single_tail(pss->ring, &pss->tail, 1);
-
 	lwsl_debug(" wrote %d: flags: 0x%x\n", w, pmsg->flags);
 
 	return 0;

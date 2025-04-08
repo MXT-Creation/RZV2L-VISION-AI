@@ -16,6 +16,13 @@
 #define NUM_MAX_CAMERAS		32
 #define NUM_MAX_CAPTURE_BUFS	8
 #define DEV_NAME_MAX_SIZE	sizeof("/dev/video999")
+#define MAX_CONTROL_QUEUE_SIZE  32
+
+struct control_request {
+    uint32_t id;
+    int value;
+    bool pending;
+};
 
 struct camera_entry {
 	char dev_name[DEV_NAME_MAX_SIZE];
@@ -24,6 +31,9 @@ struct camera_entry {
 	int width;
 	int height;
 	char needs_resize;
+	struct control_request control_queue[MAX_CONTROL_QUEUE_SIZE];
+	int queue_head;
+	int queue_tail;
 };
 
 /* FIXME: add mutex when adding threads */
@@ -438,5 +448,287 @@ void camera_dev_release_capture_buffer(int cam_id, struct camera_buffer *buf)
 	}
 
 	camera_enqueue_buffer(cam->fd, buf->id);
+}
+
+static int camera_queue_control(struct camera_entry *cam, uint32_t control_id, int value)
+{
+    int next_tail = (cam->queue_tail + 1) % MAX_CONTROL_QUEUE_SIZE;
+    
+    if (next_tail == cam->queue_head) {
+        lwsl_err("Control queue is full, dropping request for control %u\n", control_id);
+        return -1;
+    }
+    
+    cam->control_queue[cam->queue_tail].id = control_id;
+    cam->control_queue[cam->queue_tail].value = value;
+    cam->control_queue[cam->queue_tail].pending = true;
+    cam->queue_tail = next_tail;
+    
+    return 0;
+}
+
+static int camera_process_control_queue(struct camera_entry *cam, json_object *result)
+{
+    if (cam->queue_head == cam->queue_tail)
+        return 0;
+    
+    struct control_request *req = &cam->control_queue[cam->queue_head];
+    struct v4l2_control control = {};
+    int ret;
+    
+    control.id = req->id;
+    control.value = req->value;
+    
+    // First try setting the control directly
+    ret = xioctl(cam->fd, VIDIOC_S_CTRL, &control);
+    
+    if (ret < 0 && errno == EBUSY) {
+        // Need to stop and restart the camera
+        lwsl_info("Control %u is busy, stopping camera and retrying\n", control.id);
+        
+        camera_streaming_set_on(cam->fd, false);
+        
+        ret = xioctl(cam->fd, VIDIOC_S_CTRL, &control);
+        
+        if (camera_streaming_set_on(cam->fd, true) < 0) {
+            lwsl_err("Failed to restart camera streaming\n");
+            cam->queue_head = (cam->queue_head + 1) % MAX_CONTROL_QUEUE_SIZE;
+            
+            if (result) {
+                json_object_object_add(result, "success", json_object_new_boolean(0));
+                json_object_object_add(result, "error", json_object_new_string("Failed to restart camera"));
+            }
+            
+            return -1;
+        }
+        
+        for (int i = 0; i < NUM_MAX_CAPTURE_BUFS; i++) {
+            camera_enqueue_buffer(cam->fd, i);
+        }
+    }
+    
+    cam->queue_head = (cam->queue_head + 1) % MAX_CONTROL_QUEUE_SIZE;
+    
+    if (result) {
+        json_object_object_add(result, "success", json_object_new_boolean(ret >= 0));
+        json_object_object_add(result, "control_id", json_object_new_int(control.id));
+        json_object_object_add(result, "value", json_object_new_int(control.value));
+        
+        if (ret < 0) {
+            json_object_object_add(result, "error", 
+                json_object_new_string(strerror(errno)));
+        }
+    }
+    
+    return ret;
+}
+
+int camera_dev_get_control(json_object *req)
+{
+    json_object *jval;
+    const char *dev;
+    const char *err = NULL;
+    int fd = -1;
+    json_object *controls_array;
+    
+    jval = json_object_object_get(req, "value");
+    dev = json_object_get_string(json_object_object_get(jval, "device"));
+    if (!dev) {
+        err = "no camera device provided";
+        goto err_msg;
+    }
+    
+    fd = open(dev, O_RDWR | O_NONBLOCK);
+    if (fd < 0) {
+        err = "error opening device";
+        goto err_msg;
+    }
+    
+    controls_array = json_object_new_array();
+    if (!controls_array) {
+        err = "failed to create JSON array";
+        goto err_close;
+    }
+    
+    // Query all controls
+    struct v4l2_queryctrl qctrl = {};
+    qctrl.id = V4L2_CTRL_FLAG_NEXT_CTRL;
+    
+    while (xioctl(fd, VIDIOC_QUERYCTRL, &qctrl) == 0) {
+        json_object *ctrl_obj = json_object_new_object();
+        
+        if (ctrl_obj) {
+            json_object_object_add(ctrl_obj, "id", json_object_new_int(qctrl.id));
+            json_object_object_add(ctrl_obj, "name", json_object_new_string((char *)qctrl.name));
+            json_object_object_add(ctrl_obj, "type", json_object_new_int(qctrl.type));
+            json_object_object_add(ctrl_obj, "minimum", json_object_new_int(qctrl.minimum));
+            json_object_object_add(ctrl_obj, "maximum", json_object_new_int(qctrl.maximum));
+            json_object_object_add(ctrl_obj, "step", json_object_new_int(qctrl.step));
+            json_object_object_add(ctrl_obj, "default_value", json_object_new_int(qctrl.default_value));
+            json_object_object_add(ctrl_obj, "flags", json_object_new_int(qctrl.flags));
+            
+            if (qctrl.type == V4L2_CTRL_TYPE_MENU) {
+                json_object *menu_array = json_object_new_array();
+                
+                if (menu_array) {
+                    struct v4l2_querymenu qmenu = {};
+                    qmenu.id = qctrl.id;
+                    
+                    for (qmenu.index = qctrl.minimum; qmenu.index <= (uint32_t)qctrl.maximum; 
+                         qmenu.index += qctrl.step) {
+                        if (xioctl(fd, VIDIOC_QUERYMENU, &qmenu) == 0) {
+                            json_object *menu_item = json_object_new_object();
+                            if (menu_item) {
+                                json_object_object_add(menu_item, "index", 
+                                    json_object_new_int(qmenu.index));
+                                json_object_object_add(menu_item, "name", 
+                                    json_object_new_string((char *)qmenu.name));
+                                json_object_array_add(menu_array, menu_item);
+                            }
+                        }
+                    }
+                    
+                    json_object_object_add(ctrl_obj, "menu", menu_array);
+                }
+            }
+            
+            // Get current control value
+            struct v4l2_control control = {};
+            control.id = qctrl.id;
+            
+            if (xioctl(fd, VIDIOC_G_CTRL, &control) == 0) {
+                json_object_object_add(ctrl_obj, "current_value", 
+                    json_object_new_int(control.value));
+            }
+            
+            json_object_array_add(controls_array, ctrl_obj);
+        }
+        
+        qctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+    }
+    
+    json_object_object_add(req, "value", controls_array);
+    close(fd);
+    return 0;
+    
+err_close:
+    if (fd >= 0)
+        close(fd);
+err_msg:
+    json_object_object_add(req, "error", json_object_new_string(err));
+    lwsl_err("%s: %s\n", __func__, err);
+    return -1;
+}
+
+int camera_dev_set_control(json_object *req)
+{
+    json_object *jval, *jctrl;
+    const char *dev;
+    uint32_t control_id;
+    int value;
+    const char *err = NULL;
+    struct camera_entry *cam = NULL;
+    
+    // Debug log to trace the input
+    lwsl_info("camera_dev_set_control: Processing request %s\n", 
+              json_object_to_json_string_ext(req, JSON_C_TO_STRING_SPACED));
+    
+    jval = json_object_object_get(req, "value");
+    if (!jval) {
+        err = "missing value object";
+        goto err_msg;
+    }
+    
+    dev = json_object_get_string(json_object_object_get(jval, "device"));
+    if (!dev) {
+        err = "no camera device provided";
+        goto err_msg;
+    }
+    
+    jctrl = json_object_object_get(jval, "control");
+    if (!jctrl) {
+        err = "no control data provided";
+        goto err_msg;
+    }
+    
+    json_object *id_obj = NULL;
+    if (!json_object_object_get_ex(jctrl, "id", &id_obj) || !id_obj) {
+        err = "missing control id";
+        goto err_msg;
+    }
+    control_id = json_object_get_int(id_obj);
+    
+    json_object *value_obj = NULL;
+    if (!json_object_object_get_ex(jctrl, "value", &value_obj) || !value_obj) {
+        err = "missing control value";
+        goto err_msg;
+    }
+    value = json_object_get_int(value_obj);
+    
+    // Log the extracted values for debugging
+    lwsl_info("Setting control: device=%s, control_id=%u, value=%d\n", 
+              dev, control_id, value);
+    
+    cam = camera_find_active(dev, NULL);
+    if (!cam) {
+        // Device is not active - open it temporarily
+        int fd = open(dev, O_RDWR | O_NONBLOCK);
+        if (fd < 0) {
+            err = "error opening device";
+            goto err_msg;
+        }
+        
+        // Set control directly
+        struct v4l2_control control = {};
+        control.id = control_id;
+        control.value = value;
+        
+        if (xioctl(fd, VIDIOC_S_CTRL, &control) < 0) {
+            err = strerror(errno);
+            close(fd);
+            goto err_msg;
+        }
+        
+        close(fd);
+        
+        // Successfully set the control
+        json_object *result = json_object_new_object();
+        if (!result) {
+            err = "failed to create result object";
+            goto err_msg;
+        }
+        
+        json_object_object_add(result, "success", json_object_new_boolean(1));
+        json_object_object_add(result, "control_id", json_object_new_int(control_id));
+        json_object_object_add(result, "value", json_object_new_int(value));
+        
+        json_object_object_add(req, "value", result);
+    } else {
+        // Device is active, queue the control change
+        if (camera_queue_control(cam, control_id, value) < 0) {
+            err = "failed to queue control request";
+            goto err_msg;
+        }
+        
+        // Process the queue
+        json_object *result = json_object_new_object();
+        if (!result) {
+            err = "failed to create result object";
+            goto err_msg;
+        }
+        
+        if (camera_process_control_queue(cam, result) < 0) {
+            // Error details are already in result
+        }
+        
+        json_object_object_add(req, "value", result);
+    }
+    
+    return 0;
+    
+err_msg:
+    lwsl_err("camera_dev_set_control: %s\n", err);
+    json_object_object_add(req, "error", json_object_new_string(err));
+    return -1;
 }
 
