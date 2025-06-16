@@ -277,6 +277,7 @@
 	/delete-node/ gpio-sd0-pwr-en-hog;
 	/delete-node/ sd0-dev-sel-hog;
 	/delete-node/ sd1-pwr-en-hog;
+        /delete-node/ ssi0_pins;
 
 	
         /delete-node/ usb1_pins;
@@ -372,8 +373,7 @@
 			 <RZG2L_PORT_PINMUX(5, 0, 1)>, /* OVC */
 			 <RZG2L_PORT_PINMUX(5, 1, 1)>; /* OTG_ID */
 	};
-<<<<<<< HEAD
-=======
+
 
 	usb1_pins: usb1 {
 		pinmux = <RZG2L_PORT_PINMUX(42, 0, 1)>, /* VBUS */
@@ -393,5 +393,5 @@
         status = "okay";
         max-frequency = <80000000>;
         clock-frequency = <80000000>;
->>>>>>> 740562d4... Fix:
+
 };
