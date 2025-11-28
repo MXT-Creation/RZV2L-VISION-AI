@@ -1,0 +1,68 @@
+diff --git a/board/renesas/rzv2l-dev/rzv2l-dev.c b/board/renesas/rzv2l-dev/rzv2l-dev.c
+index dc1896fa88..0d368b349f 100644
+--- a/board/renesas/rzv2l-dev/rzv2l-dev.c
++++ b/board/renesas/rzv2l-dev/rzv2l-dev.c
+@@ -44,9 +44,12 @@ DECLARE_GLOBAL_DATA_PTR;
+ #define CPG_CLKON_USB				(CPG_BASE + 0x578)
+ 
+ /* PFC */
+-#define PFC_P37						(PFC_BASE + 0x037)
+-#define PFC_PM37					(PFC_BASE + 0x16E)
+-#define PFC_PMC37					(PFC_BASE + 0x237)
++#define PFC_P38					(PFC_BASE + 0x038)
++#define PFC_PM38					(PFC_BASE + 0x170)
++#define PFC_PMC38					(PFC_BASE + 0x238)
++#define PFC_P3B					(PFC_BASE + 0x03B)
++#define PFC_PM3B					(PFC_BASE + 0x176)
++#define PFC_PMC3B					(PFC_BASE + 0x23B)
+ #define PFC_PWPR 					(PFC_BASE + 0x3014)
+ #define PFC_PMC14					(PFC_BASE + 0x214)
+ #define PFC_PFC14					(PFC_BASE + 0x450)
+@@ -72,19 +75,19 @@ DECLARE_GLOBAL_DATA_PTR;
+ void s_init(void)
+ {
+ 
+-	/* SD1 power control: P39_1 = 0; P39_2 = 1; */
+-	*(volatile u32 *)(PFC_PMC37) &= 0xFFFFFFF9; /* Port func mode 0b00 */
+-	*(volatile u32 *)(PFC_PM37) = (*(volatile u32 *)(PFC_PM37) & 0xFFFFFFC3) | 0x28; /* Port output mode 0b1010 */
+-#if CONFIG_TARGET_SMARC_RZV2L
+-	*(volatile u32 *)(PFC_P37) = (*(volatile u32 *)(PFC_P37) & 0xFFFFFFF9) | 0x6;	/* Port 39[2:1] output value 0b11*/
+-#else
+-
+-	*(volatile u32 *)(PFC_P37) = (*(volatile u32 *)(PFC_P37) & 0xFFFFFFF9) | 0x4;	/* Port 39[2:1] output value 0b10*/
+-#endif
++	/* SD1 power control for MXT SMARC SOM power enable: P40_2 = 1; */
++	*(volatile u32 *)(PFC_PMC38) &= 0xFFFFFFF8; /* Port GPIO mode 0b000 */
++	*(volatile u32 *)(PFC_PM38) = (*(volatile u32 *)(PFC_PM38) & 0xFFFFFFC0) | 0x20; /* Port output mode 0b100000 */
++	*(volatile u32 *)(PFC_P38) = (*(volatile u32 *)(PFC_P38) & 0xFFFFFFF8) | 0x4;	/* Port 40[2] output value 0b100*/
+ 
++	/* SD1 power level 3V3: P43_3 = 0; */
++	*(volatile u32 *)(PFC_PMC3B) &= 0xFFFFFFF0; /* Port GPIO mode 0b0000 */
++	*(volatile u32 *)(PFC_PM3B) = (*(volatile u32 *)(PFC_PM38) & 0xFFFFFF00) | 0x80; /* Port output mode 0b10000000 */
++	*(volatile u32 *)(PFC_P3B) = (*(volatile u32 *)(PFC_P38) & 0xFFFFFFF0);	/* Port 40[2] output value 0b100*/
++	
+ 	/* can go in board_eht_init() once enabled */
+-	*(volatile u32 *)(ETH_CH0) = (*(volatile u32 *)(ETH_CH0) & 0xFFFFFFFC) | ETH_PVDD_1800;
+-	*(volatile u32 *)(ETH_CH1) = (*(volatile u32 *)(ETH_CH1) & 0xFFFFFFFC) | ETH_PVDD_1800;
++	*(volatile u32 *)(ETH_CH0) = (*(volatile u32 *)(ETH_CH0) & 0xFFFFFFFC) | ETH_PVDD_3300;
++	*(volatile u32 *)(ETH_CH1) = (*(volatile u32 *)(ETH_CH1) & 0xFFFFFFFC) | ETH_PVDD_3300;
+ 	/* Enable RGMII for both ETH{0,1} */
+ 	*(volatile u32 *)(ETH_MII_RGMII) = (*(volatile u32 *)(ETH_MII_RGMII) & 0xFFFFFFFC);
+ 	/* ETH CLK */
+@@ -118,16 +121,6 @@ static void board_usb_init(void)
+ 	(*(volatile u8 *)PFC_PFC15) &= ~(0x7u << 0);    /* PFC15.PFC0 = 0 */
+ 	(*(volatile u8 *)PFC_PFC15) |= (0x1u << 0);
+ 
+-	/* set P42_0 as Func.1 for VBUSEN */
+-	(*(volatile u8 *)PFC_PMC3A) |= (0x1u << 0);     /* PMC14.b0 = 1 */
+-	(*(volatile u8 *)PFC_PFC3A) &= ~(0xfu << 0);    /* PFC15.PFC0 = 0 */
+-	(*(volatile u8 *)PFC_PFC3A) |= (0x1u << 0);
+-
+-	/* set P42_1 as Func.1 for OVERCUR */
+-	(*(volatile u8 *)PFC_PMC3A) |= (0x1u << 0);     /* PMC14.b1 = 1 */
+-	(*(volatile u8 *)PFC_PFC3A) &= ~(0xfu << 4);    /* PFC15.PFC1 = 0 */
+-	(*(volatile u8 *)PFC_PFC3A) |= (0x1u << 4);
+-
+ 	/* Enable write protect */
+ 	(*(volatile u32 *)PFC_PWPR) &= ~(0x1u << 6);    /* PWPR.PFCWE = 0 */
+ 	(*(volatile u32 *)PFC_PWPR) |= (0x1u << 7);     /* PWPR.BOWI = 1 */

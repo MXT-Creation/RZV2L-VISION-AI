@@ -57,7 +57,7 @@
 		regulator-always-on;
 	};
 
-	cam1_2v7_supply: 2p8v {
+	cam1_2v7_supply: 2p7v {
 		compatible = "regulator-fixed";
 		regulator-name = "cam1_2v7_supply";
 		regulator-min-microvolt = <2700000>;

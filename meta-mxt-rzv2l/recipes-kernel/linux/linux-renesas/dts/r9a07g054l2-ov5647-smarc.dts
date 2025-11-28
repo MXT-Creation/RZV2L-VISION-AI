@@ -179,19 +179,8 @@
 &spi0 {
 	pinctrl-0 = <&spi0_pins>;
 	pinctrl-names = "default";
-	dmas = <&dmac 0x2e95>, <&dmac 0x2e96>;
-	dma-names = "tx", "rx";
 
-	status = "okay";
-
-	da16xxx@0 {
-		compatible = "renesas,da16xxx";
-		reg = <0>;
-		spi-max-frequency = <25000000>;
-		reset-gpios = <&pinctrl RZG2L_GPIO(40, 0) GPIO_ACTIVE_LOW>;
-		irq0-gpios = <&pinctrl RZG2L_GPIO(2, 0) GPIO_ACTIVE_LOW>;
-		irq1-gpios = <&pinctrl RZG2L_GPIO(2, 1) GPIO_ACTIVE_LOW>;
-	};
+	status = "disable";
 };
 
 &spi1 {
@@ -336,12 +325,5 @@
 	usb1_pins: usb1 {
 		pinmux = <RZG2L_PORT_PINMUX(42, 0, 1)>, /* VBUS */
 			 <RZG2L_PORT_PINMUX(42, 1, 1)>; /* OVC */
-	};
-
-	wifi-rtc-pwr{
-		gpio-hog;
-		gpios = <RZG2L_GPIO(40, 0) GPIO_ACTIVE_LOW>;
-		output-low;
-		line-name = "wifi-rtc-pwr";
 	};
 };

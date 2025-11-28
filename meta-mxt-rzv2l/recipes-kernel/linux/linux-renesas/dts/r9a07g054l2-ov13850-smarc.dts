@@ -78,8 +78,43 @@
 	status = "disabled";
 };
 
-&i2c0 {
+&poega {
 	status = "disabled";
+};
+
+&poegb {
+	status = "disabled";
+};
+
+&poegc {
+	status = "disabled";
+};
+
+&poegd {
+	status = "disabled";
+};
+
+&i2c0 {
+	pinctrl-0 = <&i2c0_pins>;
+	pinctrl-names = "default";
+	clock-frequency = <400000>;
+
+	status = "okay";
+
+	pmic: raa215300@12 {
+		compatible = "renesas,raa215300";
+		reg = <0x12>;
+
+		rtc-enable;
+	};
+
+	rtc: isl1208@6f {
+		compatible = "isil,isl1208";
+		reg = <0x6f>;
+
+		external-oscillator;
+	};
+	
 	/delete-node/ camera@3c;
 };
 
@@ -107,29 +142,15 @@
 		};
 	};
 
-	adv7535: hdmi@3d {
-		status = "disabled";
-
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			port@0 {
-				/delete-node/ endpoint@0;
-			};
-			port@1 {
-				/delete-node/ endpoint@1;
-			};
-			port@2 {
-				/delete-node/ endpoint@2;
-			};
-		};
-	};
+	/delete-node/ hdmi@3d;
 };
 
 &i2c3 {
 	status = "disabled";
 	/delete-node/ codec@1a;
+	/delete-node/ versa3@68;
+	/delete-node/ raa215300@12;
+	/delete-node/ isl1208@6f;
 };
 
 &vccq_sdhi1 {
@@ -138,8 +159,8 @@
 	regulator-min-microvolt = <1800000>;
 	regulator-max-microvolt = <3300000>;
 	gpios = <&pinctrl RZG2L_GPIO(43, 3) GPIO_ACTIVE_HIGH>;
-	gpios-states = <1>;
-	states = <3300000 1>, <1800000 0>;
+	gpios-states = <0>;
+	states = <3300000 0>, <1800000 1>;
 };
 
 &eth0 {
@@ -172,8 +193,18 @@
 	status = "disabled";
 };
 
+&ssi0 {
+	status = "disabled";
+};
+
 &ssi1 {
 	status = "disabled";
+	
+	ports {
+		port@0 {
+			/delete-node/ endpoint;
+		};
+	};
 };
 
 &du {
@@ -194,6 +225,10 @@
 	status = "okay";
 };
 
+&mtu3 {
+	status = "disabled";
+};
+
 &csi2 {
 	status = "okay";
 
@@ -208,6 +243,26 @@
 	};
 };
 
+&eth0 {
+	status = "disabled";
+};
+
+&eth1 {
+	status = "disabled";
+};
+
+&sbc {
+	status = "disabled";
+};
+
+&gpt4 {
+	status = "disabled";
+};
+
+&usb2_phy1 {
+	status = "disabled";
+};
+
 &pinctrl {
 	pinctrl-0 = <&sound_clk_pins>;
 	pinctrl-names = "default";
@@ -216,6 +271,7 @@
 	/delete-node/ gpio-sd0-pwr-en-hog;
 	/delete-node/ sd0-dev-sel-hog;
 	/delete-node/ sd1-pwr-en-hog;
+	/delete-node/ usb1_pins;
 
 	i2c0_pins: i2c0 {
 		pins = "RIIC0_SDA", "RIIC0_SCL";
@@ -225,11 +281,6 @@
 	i2c1_pins: i2c1 {
 		pins = "RIIC1_SDA", "RIIC1_SCL";
 		input-enable;
-	};
-
-	i2c3_pins: i2c3 {
-		pinmux = <RZG2L_PORT_PINMUX(18, 0, 3)>, /* SDA */
-			 <RZG2L_PORT_PINMUX(18, 1, 3)>; /* SCL */
 	};
 
 	scif0_pins: scif0 {
@@ -305,17 +356,5 @@
 		pinmux = <RZG2L_PORT_PINMUX(4, 0, 1)>, /* VBUS */
 			 <RZG2L_PORT_PINMUX(5, 0, 1)>, /* OVC */
 			 <RZG2L_PORT_PINMUX(5, 1, 1)>; /* OTG_ID */
-	};
-
-	usb1_pins: usb1 {
-		pinmux = <RZG2L_PORT_PINMUX(42, 0, 1)>, /* VBUS */
-			 <RZG2L_PORT_PINMUX(42, 1, 1)>; /* OVC */
-	};
-
-	wifi-rtc-pwr{
-		gpio-hog;
-		gpios = <RZG2L_GPIO(40, 0) GPIO_ACTIVE_LOW>;
-		output-low;
-		line-name = "wifi-rtc-pwr";
 	};
 };
