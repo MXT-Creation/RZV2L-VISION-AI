@@ -279,7 +279,7 @@
 	/delete-node/ sd1-pwr-en-hog;
 
 	
-
+        /delete-node/ usb1_pins;
         /delete-node/ ssi0_pins;
 
 
